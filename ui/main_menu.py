@@ -4,6 +4,7 @@ from config import AVAILABLE_RESOLUTIONS
 from storage.settings_storage import AppSettings, load_settings, save_settings
 from ui.settings_screen import SettingsScreen
 from ui.widgets import create_button_row
+from ui.game_screen import GameScreen
 
 
 class MainMenu(tk.Tk):
@@ -54,11 +55,10 @@ class MainMenu(tk.Tk):
         menu_bar.pack(side=tk.TOP, fill=tk.X)
 
         buttons = (
-            ("Сюжетная игра", self.main_story_game),
             (
                 "Бесконечная игра",
                 self.infinity_game,
-            ),  # оставить уведу о том что будет реализовано в будущем
+            ),
             ("Настройки", self.open_settings),
             ("Выход", self.close_game),
         )
@@ -97,11 +97,12 @@ class MainMenu(tk.Tk):
         save_settings(self.settings)
         self.update_idletasks()
 
-    def main_story_game(self):
-        pass
-
     def infinity_game(self):
-        pass
+        width, height = self.current_resolution
+        game_screen = GameScreen(
+            master=self, width=width, height=height, on_back=self.render_start_page
+        )
+        self.set_screen(game_screen)
 
     def close_game(self):
         self.destroy()
