@@ -22,7 +22,6 @@ class GameEngine:
     def update(self):
         if self.is_game_over:
             return
-
         self._handle_spawning()
         self._update_enemies()
         self._update_projectiles()
@@ -30,7 +29,7 @@ class GameEngine:
     def shoot_at(self, target_x, target_y):
         dx = target_x - self.tower.x
         dy = target_y - self.tower.y
-        dist = math.sqrt(dx**2 + dy**2)
+        dist = math.hypot(dx, dy)
         if dist > 0:
             self.projectiles.append(
                 Projectile(
@@ -62,9 +61,7 @@ class GameEngine:
 
         self.enemies.append(
             Enemy(
-                x=x,
-                y=y,
-                size=size,
+                x=x, y=y, size=size,
                 hp=GAME_CONFIG["enemy_max_hp"],
                 speed=GAME_CONFIG["enemy_speed"],
                 damage=GAME_CONFIG["enemy_damage"],
@@ -74,9 +71,7 @@ class GameEngine:
     def _update_enemies(self):
         for enemy in self.enemies[:]:
             enemy.move_towards(self.tower.x, self.tower.y)
-            dist = math.sqrt(
-                (enemy.x - self.tower.x) ** 2 + (enemy.y - self.tower.y) ** 2
-            )
+            dist = math.hypot(enemy.x - self.tower.x, enemy.y - self.tower.y)
             if dist <= (self.tower.size / 2 + enemy.size / 2):
                 self.tower.take_damage(enemy.damage)
                 self.enemies.remove(enemy)
@@ -86,17 +81,15 @@ class GameEngine:
     def _update_projectiles(self):
         proj_size = GAME_CONFIG["projectile_size"]
         for proj in self.projectiles[:]:
-            proj.update_position()
-
+            proj.update()
             if self._check_projectile_hits(proj, proj_size):
                 continue
-
             if self._is_out_of_bounds(proj):
                 self.projectiles.remove(proj)
 
     def _check_projectile_hits(self, proj, proj_size):
         for enemy in self.enemies[:]:
-            dist = math.sqrt((proj.x - enemy.x) ** 2 + (proj.y - enemy.y) ** 2)
+            dist = math.hypot(proj.x - enemy.x, proj.y - enemy.y)
             if dist < (enemy.size + proj_size):
                 enemy.take_damage(1)
                 if enemy.is_dead:

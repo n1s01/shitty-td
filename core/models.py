@@ -7,6 +7,7 @@ class Tower:
         self.y = y
         self.size = size
         self.hp = max_hp
+        self.max_hp = max_hp
 
     def take_damage(self, amount):
         self.hp = max(0, self.hp - amount)
@@ -29,7 +30,7 @@ class Enemy:
     def move_towards(self, target_x, target_y):
         dx = target_x - self.x
         dy = target_y - self.y
-        dist = math.sqrt(dx**2 + dy**2)
+        dist = math.hypot(dx, dy)
         if dist > 0:
             self.x += (dx / dist) * self.speed
             self.y += (dy / dist) * self.speed
@@ -50,6 +51,6 @@ class Projectile:
         self.vy = vy
         self.speed = speed
 
-    def update_position(self):
+    def update(self):
         self.x += self.vx * self.speed
         self.y += self.vy * self.speed

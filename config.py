@@ -9,23 +9,24 @@ AVAILABLE_RESOLUTIONS = [
 ]
 
 COLORS = {
-    "canvas_bg": "#1a1a1a",
-    "back_button_bg": "#333333",
-    "back_button_fg": "#000000",
-    "tower_fill": "#4a90e2",
-    "tower_outline": "#357abd",
-    "tower_text": "#ffffff",
-    "enemy_fill": "#e74c3c",
-    "enemy_outline": "#c0392b",
-    "enemy_hp_bg": "#555555",
-    "enemy_hp_fg": "#2ecc71",
-    "projectile_fill": "#f1c40f",
-    "game_over_text": "#ff3333",
+    "bg": (26, 26, 26),
+    "tower_fill": (74, 144, 226),
+    "tower_outline": (53, 122, 189),
+    "tower_text": (255, 255, 255),
+    "enemy_fill": (231, 76, 60),
+    "enemy_outline": (192, 57, 43),
+    "enemy_hp_bg": (85, 85, 85),
+    "enemy_hp_fg": (46, 204, 113),
+    "projectile_fill": (241, 196, 15),
+    "game_over_text": (255, 51, 51),
+    "button_bg": (51, 51, 51),
+    "button_hover": (80, 80, 80),
+    "button_text": (255, 255, 255),
+    "title_text": (255, 255, 255),
 }
 
 GAME_CONFIG = {
     "fps": 60,
-    "frame_time_ms": 16,
     "tower_size": 50,
     "tower_max_hp": 100,
     "enemy_spawn_delay": 90,
@@ -36,3 +37,5 @@ GAME_CONFIG = {
     "projectile_speed": 8,
     "projectile_size": 4,
 }
+
+SETTINGS_FILE = "data/settings.json"
