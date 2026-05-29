@@ -26,14 +26,32 @@ class Enemy:
         self.max_hp = hp
         self.speed = speed
         self.damage = damage
+        self.path = None
+        self.path_index = 0
 
     def move_towards(self, target_x, target_y):
-        dx = target_x - self.x
-        dy = target_y - self.y
+        next_x, next_y = self._next_target(target_x, target_y)
+        dx = next_x - self.x
+        dy = next_y - self.y
         dist = math.hypot(dx, dy)
-        if dist > 0:
+        if dist == 0:
+            return
+        if dist < self.speed:
+            self.x = next_x
+            self.y = next_y
+            if self.path and self.path_index < len(self.path):
+                self.path_index += 1
+        else:
             self.x += (dx / dist) * self.speed
             self.y += (dy / dist) * self.speed
+
+    def _next_target(self, fallback_x, fallback_y):
+        if self.path and self.path_index < len(self.path):
+            return self.path[self.path_index]
+        return fallback_x, fallback_y
+
+    def distance_to(self, x, y):
+        return math.hypot(x - self.x, y - self.y)
 
     def take_damage(self, amount):
         self.hp -= amount
@@ -44,22 +62,19 @@ class Enemy:
 
 
 class RangedEnemy(Enemy):
-    def __init__(self, x, y, size, hp, speed, damage, attack_range, fire_rate) -> None:
+    def __init__(self, x, y, size, hp, speed, damage, attack_range, fire_rate):
         super().__init__(x, y, size, hp, speed, damage)
         self.attack_range = attack_range
         self.fire_rate = fire_rate
         self.fire_cooldown = 0
 
     def move_towards(self, target_x, target_y):
-        dx = target_x - self.x
-        dy = target_y - self.y
-        dist = math.hypot(dx, dy)
-        if dist > self.attack_range:
-            self.x += (dx / dist) * self.speed
-            self.y += (dy / dist) * self.speed
+        if self.distance_to(target_x, target_y) <= self.attack_range:
+            return
+        super().move_towards(target_x, target_y)
 
     def can_fire(self):
-        return self.fire_cooldown == 0
+        return self.fire_cooldown <= 0
 
     def reset_cooldown(self):
         self.fire_cooldown = self.fire_rate
@@ -69,9 +84,7 @@ class RangedEnemy(Enemy):
             self.fire_cooldown -= 1
 
     def in_range(self, target_x, target_y):
-        dx = target_x - self.x
-        dy = target_y - self.y
-        return math.hypot(dx, dy) <= self.attack_range
+        return self.distance_to(target_x, target_y) <= self.attack_range
 
 
 class Projectile:

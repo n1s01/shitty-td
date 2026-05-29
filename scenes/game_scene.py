@@ -1,5 +1,7 @@
 import pygame
-from pygame import _freetype
+
+# python3.14 require _freetype not pygame.freetype
+from pygame import _freetype  # type: ignore[attr-defined]
 
 from config import COLORS, GAME_CONFIG
 from core.game_engine import GameEngine

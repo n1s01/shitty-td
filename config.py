@@ -41,6 +41,8 @@ GAME_CONFIG = {
     "ranged_enemy_fire_rate": 60,
     "ranged_enemy_projectile_speed": 4,
     "ranged_enemy_projectile_size": 5,
+    "grid_cols": 300,
+    "grid_rows": 170,
 }
 
 SETTINGS_FILE = "data/settings.json"

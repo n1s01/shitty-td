@@ -2,8 +2,9 @@ import math
 import random
 
 from config import GAME_CONFIG
+from core.grid import Grid
 from core.models import Enemy, EnemyProjectile, Projectile, RangedEnemy, Tower
-from scenes import game_scene
+from core.pathfinding import find_path, smooth_path
 
 
 class GameEngine:
@@ -19,6 +20,7 @@ class GameEngine:
         self.enemies = []
         self.projectiles = []
         self.enemy_projectiles = []
+        self.grid = Grid(width, height, GAME_CONFIG["grid_cols"], GAME_CONFIG["grid_rows"])
         self.spawn_timer = 0
         self.spawn_counter = 0
         self.is_game_over = False
@@ -66,29 +68,36 @@ class GameEngine:
 
         self.spawn_counter += 1
         if self.spawn_counter % 3 == 0:
-            self.enemies.append(
-                RangedEnemy(
-                    x=x,
-                    y=y,
-                    size=size,
-                    hp=GAME_CONFIG["enemy_max_hp"],
-                    speed=GAME_CONFIG["enemy_speed"],
-                    damage=GAME_CONFIG["enemy_damage"],
-                    attack_range=GAME_CONFIG["ranged_enemy_range"],
-                    fire_rate=GAME_CONFIG["ranged_enemy_fire_rate"],
-                )
+            enemy = RangedEnemy(
+                x=x,
+                y=y,
+                size=size,
+                hp=GAME_CONFIG["enemy_max_hp"],
+                speed=GAME_CONFIG["enemy_speed"],
+                damage=GAME_CONFIG["enemy_damage"],
+                attack_range=GAME_CONFIG["ranged_enemy_range"],
+                fire_rate=GAME_CONFIG["ranged_enemy_fire_rate"],
             )
         else:
-            self.enemies.append(
-                Enemy(
-                    x=x,
-                    y=y,
-                    size=size,
-                    hp=GAME_CONFIG["enemy_max_hp"],
-                    speed=GAME_CONFIG["enemy_speed"],
-                    damage=GAME_CONFIG["enemy_damage"],
-                )
+            enemy = Enemy(
+                x=x,
+                y=y,
+                size=size,
+                hp=GAME_CONFIG["enemy_max_hp"],
+                speed=GAME_CONFIG["enemy_speed"],
+                damage=GAME_CONFIG["enemy_damage"],
             )
+
+        self._assign_path(enemy)
+        self.enemies.append(enemy)
+
+    def _assign_path(self, enemy):
+        start = self.grid.world_to_grid(enemy.x, enemy.y)
+        end = self.grid.world_to_grid(self.tower.x, self.tower.y)
+        grid_path = find_path(self.grid, start, end)
+        if grid_path:
+            grid_path = smooth_path(self.grid, grid_path)
+            enemy.path = [self.grid.grid_to_world(c, r) for c, r in grid_path]
 
     def _update_enemies(self):
         for enemy in self.enemies[:]:  # copy list with enemies in mem
