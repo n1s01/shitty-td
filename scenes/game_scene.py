@@ -75,20 +75,33 @@ class GameScene:
         )
 
     def _draw_projectiles(self, surface):
-        size = GAME_CONFIG["projectile_size"]
-        for proj in self.engine.projectiles:
-            pygame.draw.circle(
-                surface, COLORS["projectile_fill"], (int(proj.x), int(proj.y)), size
+        length = 12
+        for projectile in self.engine.projectiles:
+            start_x = int(projectile.x)
+            start_y = int(projectile.y)
+            end_x = int(projectile.x - projectile.vx * length)
+            end_y = int(projectile.y - projectile.vy * length)
+            pygame.draw.line(
+                surface,
+                COLORS["projectile_fill"],
+                (start_x, start_y),
+                (end_x, end_y),
+                2,
             )
 
     def _draw_enemy_projectiles(self, surface):
-        size = GAME_CONFIG["ranged_enemy_projectile_size"]
-        for projectile in self.engine.enemy_projectiles:
-            pygame.draw.circle(
+        length = 10
+        for proj in self.engine.enemy_projectiles:
+            start_x = int(proj.x)
+            start_y = int(proj.y)
+            end_x = int(proj.x - proj.vx * length)
+            end_y = int(proj.y - proj.vy * length)
+            pygame.draw.line(
                 surface,
                 COLORS["enemy_projectile_fill"],
-                (int(projectile.x), int(projectile.y)),
-                size,
+                (start_x, start_y),
+                (end_x, end_y),
+                3,
             )
 
     def _draw_game_over(self, surface):
