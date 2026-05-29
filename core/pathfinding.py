@@ -31,9 +31,7 @@ def find_path(grid, start, end):
             if tentative_g < g_score.get(neighbor, float("inf")):
                 came_from[neighbor] = current
                 g_score[neighbor] = tentative_g
-                heuristic = math.hypot(
-                    end[0] - neighbor[0], end[1] - neighbor[1]
-                )
+                heuristic = math.hypot(end[0] - neighbor[0], end[1] - neighbor[1])
                 heapq.heappush(open_set, (tentative_g + heuristic, neighbor))
 
     return None

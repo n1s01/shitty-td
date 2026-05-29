@@ -20,7 +20,9 @@ class GameEngine:
         self.enemies = []
         self.projectiles = []
         self.enemy_projectiles = []
-        self.grid = Grid(width, height, GAME_CONFIG["grid_cols"], GAME_CONFIG["grid_rows"])
+        self.grid = Grid(
+            width, height, GAME_CONFIG["grid_cols"], GAME_CONFIG["grid_rows"]
+        )
         self.spawn_timer = 0
         self.spawn_counter = 0
         self.is_game_over = False

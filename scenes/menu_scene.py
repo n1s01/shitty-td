@@ -67,7 +67,9 @@ class MenuScene:
 
     def draw(self, surface):
         surface.fill(COLORS["bg"])
-        title_surf, title_rect = self.title_font.render("Tower Defense", COLORS["title_text"])
+        title_surf, title_rect = self.title_font.render(
+            "Tower Defense", COLORS["title_text"]
+        )
         surface.blit(title_surf, (self.width // 2 - title_rect.width // 2, 60))
         for btn in self.buttons:
             btn.draw(surface)
@@ -103,11 +105,19 @@ class SettingsScene:
         self.res_right = Button((cx + bw // 2 - 40, row_y, 40, 40), ">", self.font)
         btn_w = (bw - 10) // 2
         row_actions = cy + 130
-        self.apply_btn = Button((cx - bw // 2, row_actions, btn_w, 40), "Применить", self.font)
-        self.back_btn = Button((cx - bw // 2 + btn_w + 10, row_actions, btn_w, 40), "Назад", self.font)
+        self.apply_btn = Button(
+            (cx - bw // 2, row_actions, btn_w, 40), "Применить", self.font
+        )
+        self.back_btn = Button(
+            (cx - bw // 2 + btn_w + 10, row_actions, btn_w, 40), "Назад", self.font
+        )
 
     def _fullscreen_text(self):
-        return "Полный экран: Да" if self.settings["is_fullscreen"] else "Полный экран: Нет"
+        return (
+            "Полный экран: Да"
+            if self.settings["is_fullscreen"]
+            else "Полный экран: Нет"
+        )
 
     def _res_text(self):
         w, h = AVAILABLE_RESOLUTIONS[self.res_index]
@@ -115,7 +125,13 @@ class SettingsScene:
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
-            for btn in [self.fullscreen_btn, self.res_left, self.res_right, self.apply_btn, self.back_btn]:
+            for btn in [
+                self.fullscreen_btn,
+                self.res_left,
+                self.res_right,
+                self.apply_btn,
+                self.back_btn,
+            ]:
                 btn.check_hover(event.pos)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
@@ -141,7 +157,9 @@ class SettingsScene:
 
     def draw(self, surface):
         surface.fill(COLORS["bg"])
-        title_surf, title_rect = self.title_font.render("Настройки", COLORS["title_text"])
+        title_surf, title_rect = self.title_font.render(
+            "Настройки", COLORS["title_text"]
+        )
         surface.blit(title_surf, (self.width // 2 - title_rect.width // 2, 40))
         self.fullscreen_btn.draw(surface)
         self.res_left.draw(surface)
