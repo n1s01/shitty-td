@@ -29,6 +29,7 @@ COLORS = {
 GAME_CONFIG = {
     "fps": 60,
     "tower_size": 50,
+    "tower_hitbox_size": 170,
     "tower_max_hp": 100,
     "enemy_spawn_delay": 90,
     "enemy_size": 20,
@@ -43,6 +44,17 @@ GAME_CONFIG = {
     "ranged_enemy_projectile_size": 5,
     "grid_cols": 300,
     "grid_rows": 170,
+    "map_obstacle_count": 18,
+    "map_obstacles": [
+        {"asset": "obstacles/pond_1.png", "size": (64, 48)},
+        {"asset": "obstacles/pond_2.png", "size": (72, 48)},
+        {"asset": "obstacles/dead_log_1.png", "size": (64, 32)},
+        {"asset": "obstacles/dead_log_2.png", "size": (56, 32)},
+        {"asset": "obstacles/dry_branch_1.png", "size": (48, 32)},
+        {"asset": "obstacles/dry_branch_2.png", "size": (56, 32)},
+        {"asset": "obstacles/stones_1.png", "size": (48, 32)},
+        {"asset": "obstacles/stump_1.png", "size": (36, 36)},
+    ],
 }
 
 SETTINGS_FILE = "data/settings.json"

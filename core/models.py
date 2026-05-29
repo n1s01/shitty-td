@@ -1,11 +1,30 @@
 import math
 
 
+class Obstacle:
+    def __init__(self, x, y, width, height, asset):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.asset = asset
+
+    @property
+    def rect(self):
+        return (
+            self.x - self.width / 2,
+            self.y - self.height / 2,
+            self.width,
+            self.height,
+        )
+
+
 class Tower:
-    def __init__(self, x, y, size, max_hp):
+    def __init__(self, x, y, size, max_hp, hitbox_size=None):
         self.x = x
         self.y = y
         self.size = size
+        self.hitbox_size = hitbox_size or size
         self.hp = max_hp
         self.max_hp = max_hp
 
@@ -15,6 +34,11 @@ class Tower:
     @property
     def is_destroyed(self):
         return self.hp <= 0
+
+    @property
+    def hitbox_rect(self):
+        half = self.hitbox_size / 2
+        return (self.x - half, self.y - half, self.hitbox_size, self.hitbox_size)
 
 
 class Enemy:
