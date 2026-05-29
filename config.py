@@ -23,6 +23,7 @@ COLORS = {
     "button_hover": (80, 80, 80),
     "button_text": (255, 255, 255),
     "title_text": (255, 255, 255),
+    "enemy_projectile_fill": (255, 165, 0),
 }
 
 GAME_CONFIG = {
@@ -36,6 +37,10 @@ GAME_CONFIG = {
     "enemy_damage": 10,
     "projectile_speed": 8,
     "projectile_size": 4,
+    "ranged_enemy_range": 200,
+    "ranged_enemy_fire_rate": 60,
+    "ranged_enemy_projectile_speed": 4,
+    "ranged_enemy_projectile_size": 5,
 }
 
 SETTINGS_FILE = "data/settings.json"

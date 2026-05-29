@@ -1,7 +1,9 @@
 import math
 import random
+
 from config import GAME_CONFIG
-from core.models import Tower, Enemy, Projectile
+from core.models import Enemy, EnemyProjectile, Projectile, RangedEnemy, Tower
+from scenes import game_scene
 
 
 class GameEngine:
@@ -16,7 +18,9 @@ class GameEngine:
         )
         self.enemies = []
         self.projectiles = []
+        self.enemy_projectiles = []
         self.spawn_timer = 0
+        self.spawn_counter = 0
         self.is_game_over = False
 
     def update(self):
@@ -25,6 +29,7 @@ class GameEngine:
         self._handle_spawning()
         self._update_enemies()
         self._update_projectiles()
+        self._update_enemy_projectiles()
 
     def shoot_at(self, target_x, target_y):
         dx = target_x - self.tower.x
@@ -59,24 +64,76 @@ class GameEngine:
         else:
             x, y = -size, random.uniform(0, self.height)
 
-        self.enemies.append(
-            Enemy(
-                x=x, y=y, size=size,
-                hp=GAME_CONFIG["enemy_max_hp"],
-                speed=GAME_CONFIG["enemy_speed"],
-                damage=GAME_CONFIG["enemy_damage"],
+        self.spawn_counter += 1
+        if self.spawn_counter % 3 == 0:
+            self.enemies.append(
+                RangedEnemy(
+                    x=x,
+                    y=y,
+                    size=size,
+                    hp=GAME_CONFIG["enemy_max_hp"],
+                    speed=GAME_CONFIG["enemy_speed"],
+                    damage=GAME_CONFIG["enemy_damage"],
+                    attack_range=GAME_CONFIG["ranged_enemy_range"],
+                    fire_rate=GAME_CONFIG["ranged_enemy_fire_rate"],
+                )
             )
-        )
+        else:
+            self.enemies.append(
+                Enemy(
+                    x=x,
+                    y=y,
+                    size=size,
+                    hp=GAME_CONFIG["enemy_max_hp"],
+                    speed=GAME_CONFIG["enemy_speed"],
+                    damage=GAME_CONFIG["enemy_damage"],
+                )
+            )
 
     def _update_enemies(self):
-        for enemy in self.enemies[:]:
+        for enemy in self.enemies[:]:  # copy list with enemies in mem
             enemy.move_towards(self.tower.x, self.tower.y)
-            dist = math.hypot(enemy.x - self.tower.x, enemy.y - self.tower.y)
-            if dist <= (self.tower.size / 2 + enemy.size / 2):
-                self.tower.take_damage(enemy.damage)
-                self.enemies.remove(enemy)
+
+            if isinstance(enemy, RangedEnemy):
+                enemy.update_cooldown()
+                if enemy.in_range(self.tower.x, self.tower.y) and enemy.can_fire():
+                    self._enemy_shoot(enemy)
+                    enemy.reset_cooldown()
+            else:
+                dist = math.hypot(enemy.x - self.tower.x, enemy.y - self.tower.y)
+                if dist <= (self.tower.size / 2 + enemy.size / 2):
+                    self.tower.take_damage(enemy.damage)
+                    self.enemies.remove(enemy)
+                    if self.tower.is_destroyed:
+                        self.is_game_over = True
+
+    def _enemy_shoot(self, enemy):
+        dx = self.tower.x - enemy.x
+        dy = self.tower.y - enemy.y
+        dist = math.hypot(dx, dy)
+        if dist > 0:
+            self.enemy_projectiles.append(
+                EnemyProjectile(
+                    x=enemy.x,
+                    y=enemy.y,
+                    vx=dx / dist,
+                    vy=dy / dist,
+                    speed=GAME_CONFIG["ranged_enemy_projectile_speed"],
+                    damage=GAME_CONFIG["enemy_damage"],
+                )
+            )
+
+    def _update_enemy_projectiles(self):
+        for proj in self.enemy_projectiles[:]:
+            proj.update()
+            dist = math.hypot(proj.x - self.tower.x, proj.y - self.tower.y)
+            if dist <= self.tower.size / 2:
+                self.tower.take_damage(proj.damage)
+                self.enemy_projectiles.remove(proj)
                 if self.tower.is_destroyed:
                     self.is_game_over = True
+            elif self._is_out_of_bounds(proj):
+                self.enemy_projectiles.remove(proj)
 
     def _update_projectiles(self):
         proj_size = GAME_CONFIG["projectile_size"]

@@ -1,5 +1,6 @@
 import pygame
 from pygame import _freetype
+
 from config import COLORS, GAME_CONFIG
 from core.game_engine import GameEngine
 
@@ -34,17 +35,22 @@ class GameScene:
         self._draw_tower(surface)
         self._draw_enemies(surface)
         self._draw_projectiles(surface)
+        self._draw_enemy_projectiles(surface)
         if self.engine.is_game_over:
             self._draw_game_over(surface)
 
     def _draw_tower(self, surface):
         tower = self.engine.tower
         half = tower.size // 2
-        rect = pygame.Rect(int(tower.x) - half, int(tower.y) - half, tower.size, tower.size)
+        rect = pygame.Rect(
+            int(tower.x) - half, int(tower.y) - half, tower.size, tower.size
+        )
         pygame.draw.rect(surface, COLORS["tower_fill"], rect)
         pygame.draw.rect(surface, COLORS["tower_outline"], rect, 3)
         text_surf, text_rect = self.font.render(f"HP: {tower.hp}", COLORS["tower_text"])
-        surface.blit(text_surf, (int(tower.x) - text_rect.width // 2, int(tower.y) - half - 20))
+        surface.blit(
+            text_surf, (int(tower.x) - text_rect.width // 2, int(tower.y) - half - 20)
+        )
 
     def _draw_enemies(self, surface):
         for enemy in self.engine.enemies:
@@ -62,15 +68,31 @@ class GameScene:
         y = int(enemy.y) - r - 8
         pygame.draw.rect(surface, COLORS["enemy_hp_bg"], (x, y, bar_w, bar_h))
         pct = enemy.hp / enemy.max_hp
-        pygame.draw.rect(surface, COLORS["enemy_hp_fg"], (x, y, int(bar_w * pct), bar_h))
+        pygame.draw.rect(
+            surface, COLORS["enemy_hp_fg"], (x, y, int(bar_w * pct), bar_h)
+        )
 
     def _draw_projectiles(self, surface):
         size = GAME_CONFIG["projectile_size"]
         for proj in self.engine.projectiles:
-            pygame.draw.circle(surface, COLORS["projectile_fill"], (int(proj.x), int(proj.y)), size)
+            pygame.draw.circle(
+                surface, COLORS["projectile_fill"], (int(proj.x), int(proj.y)), size
+            )
+
+    def _draw_enemy_projectiles(self, surface):
+        size = GAME_CONFIG["ranged_enemy_projectile_size"]
+        for projectile in self.engine.enemy_projectiles:
+            pygame.draw.circle(
+                surface,
+                COLORS["enemy_projectile_fill"],
+                (int(projectile.x), int(projectile.y)),
+                size,
+            )
 
     def _draw_game_over(self, surface):
-        text_surf, text_rect = self.game_over_font.render("ИГРА ОКОНЧЕНА", COLORS["game_over_text"])
+        text_surf, text_rect = self.game_over_font.render(
+            "ИГРА ОКОНЧЕНА", COLORS["game_over_text"]
+        )
         x = self.width // 2 - text_rect.width // 2
         y = self.height // 2 - text_rect.height // 2
         surface.blit(text_surf, (x, y))
