@@ -3,7 +3,7 @@ import random
 
 from config import GAME_CONFIG
 from core.grid import Grid
-from core.models import Enemy, EnemyProjectile, Obstacle, Projectile, RangedEnemy, Tower
+from core.models import Enemy, Obstacle, Projectile, RangedEnemy, Tower
 from core.pathfinding import find_path, smooth_path
 
 
@@ -173,7 +173,7 @@ class GameEngine:
         dist = math.hypot(dx, dy)
         if dist > 0:
             self.enemy_projectiles.append(
-                EnemyProjectile(
+                Projectile(
                     x=enemy.x,
                     y=enemy.y,
                     vx=dx / dist,

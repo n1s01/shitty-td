@@ -55,6 +55,7 @@ GAME_CONFIG = {
         {"asset": "obstacles/stones_1.png", "size": (48, 32)},
         {"asset": "obstacles/stump_1.png", "size": (36, 36)},
     ],
+    "map_obstacle_safe_radius_factor": 0.18,
 }
 
 SETTINGS_FILE = "data/settings.json"

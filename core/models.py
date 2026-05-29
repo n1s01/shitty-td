@@ -112,20 +112,7 @@ class RangedEnemy(Enemy):
 
 
 class Projectile:
-    def __init__(self, x, y, vx, vy, speed):
-        self.x = x
-        self.y = y
-        self.vx = vx
-        self.vy = vy
-        self.speed = speed
-
-    def update(self):
-        self.x += self.vx * self.speed
-        self.y += self.vy * self.speed
-
-
-class EnemyProjectile:
-    def __init__(self, x, y, vx, vy, speed, damage) -> None:
+    def __init__(self, x, y, vx, vy, speed, damage=0):
         self.x = x
         self.y = y
         self.vx = vx

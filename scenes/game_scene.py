@@ -42,8 +42,20 @@ class GameScene:
         self._draw_obstacles(surface)
         self._draw_tower(surface)
         self._draw_enemies(surface)
-        self._draw_projectiles(surface)
-        self._draw_enemy_projectiles(surface)
+        self._draw_projectile_list(
+            surface,
+            self.engine.projectiles,
+            "sprites/projectile_arrow.png",
+            COLORS["projectile_fill"],
+            12,
+        )
+        self._draw_projectile_list(
+            surface,
+            self.engine.enemy_projectiles,
+            "sprites/projectile_firebolt.png",
+            COLORS["enemy_projectile_fill"],
+            10,
+        )
         if self.engine.is_game_over:
             self._draw_game_over(surface)
 
@@ -175,45 +187,20 @@ class GameScene:
             surface, COLORS["enemy_hp_fg"], (x, y, int(bar_w * pct), bar_h)
         )
 
-    def _draw_projectiles(self, surface):
-        length = 12
-        arrow = self.assets.optional_image("sprites/projectile_arrow.png")
-        for projectile in self.engine.projectiles:
-            start_x = int(projectile.x)
-            start_y = int(projectile.y)
-            if arrow is not None:
-                angle = -math.degrees(math.atan2(projectile.vy, projectile.vx))
-                rotated = pygame.transform.rotate(arrow, angle)
-                surface.blit(rotated, rotated.get_rect(center=(start_x, start_y)))
+    def _draw_projectile_list(
+        self, surface, projectiles, sprite_key, fallback_color, tail_length
+    ):
+        sprite = self.assets.optional_image(sprite_key)
+        for proj in projectiles:
+            cx, cy = int(proj.x), int(proj.y)
+            if sprite is not None:
+                angle = -math.degrees(math.atan2(proj.vy, proj.vx))
+                rotated = pygame.transform.rotate(sprite, angle)
+                surface.blit(rotated, rotated.get_rect(center=(cx, cy)))
             else:
-                end_x = int(projectile.x - projectile.vx * length)
-                end_y = int(projectile.y - projectile.vy * length)
-                pygame.draw.line(
-                    surface,
-                    COLORS["projectile_fill"],
-                    (start_x, start_y),
-                    (end_x, end_y),
-                    2,
-                )
-
-    def _draw_enemy_projectiles(self, surface):
-        length = 10
-        firebolt = self.assets.optional_image("sprites/projectile_firebolt.png")
-        for proj in self.engine.enemy_projectiles:
-            start_x = int(proj.x)
-            start_y = int(proj.y)
-            if firebolt is not None:
-                surface.blit(firebolt, firebolt.get_rect(center=(start_x, start_y)))
-            else:
-                end_x = int(proj.x - proj.vx * length)
-                end_y = int(proj.y - proj.vy * length)
-                pygame.draw.line(
-                    surface,
-                    COLORS["enemy_projectile_fill"],
-                    (start_x, start_y),
-                    (end_x, end_y),
-                    3,
-                )
+                end_x = int(proj.x - proj.vx * tail_length)
+                end_y = int(proj.y - proj.vy * tail_length)
+                pygame.draw.line(surface, fallback_color, (cx, cy), (end_x, end_y), 2)
 
     def _draw_game_over(self, surface):
         text_surf, text_rect = self.game_over_font.render(
