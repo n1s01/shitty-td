@@ -31,42 +31,156 @@ def outline_rect(surf, color, rect, width=1):
     pygame.draw.rect(surf, color, rect, width)
 
 
+# Палитра травы: от тёмной (в тени) до светлой (на солнце)
+GRASS_SHADES = [
+    (60, 108, 46),  # 0 — самая тёмная, ложбинки
+    (68, 118, 52),  # 1
+    (76, 128, 58),  # 2 — основной средний тон
+    (84, 138, 64),  # 3
+    (94, 150, 72),  # 4 — светлые проплешины на солнце
+]
+
+
+def _hash(x, y, seed):
+    """Детерминированный шум — чтобы текстура воспроизводилась при перегенерации."""
+    h = (x * 374761393 + y * 668265263 + seed * 2654435761) & 0xFFFFFFFF
+    h ^= h >> 15
+    h = (h * 2246822519) & 0xFFFFFFFF
+    h ^= h >> 13
+    return h & 0xFFFFFFFF
+
+
+def _shade_index(value):
+    """Распределяем 0..99 по оттенкам так, чтобы средний тон преобладал."""
+    if value < 8:
+        return 0
+    if value < 30:
+        return 1
+    if value < 72:
+        return 2
+    if value < 92:
+        return 3
+    return 4
+
+
+def _grass_base(img, seed):
+    """Мягкая пятнистая основа: крупные клочки + мелкая зернистость."""
+    w, h = img.get_size()
+    for by in range(0, h, 2):
+        for bx in range(0, w, 2):
+            coarse = _hash(bx // 8, by // 8, seed) % 100  # крупные пятна
+            fine = _hash(bx, by, seed + 7) % 100  # мелкая зернистость
+            value = (coarse * 7 + fine * 3) // 10
+            px(img, GRASS_SHADES[_shade_index(value)], (bx, by, 2, 2))
+
+    # редкие точечные блики и тёмные крапинки для живости
+    for n in range(10):
+        hx = _hash(n, seed, 101) % w
+        hy = _hash(n, seed, 202) % h
+        spec = _hash(n, seed, 303) % 5
+        if spec == 0:
+            px(img, GRASS_SHADES[4], (hx, hy, 1, 1))
+        elif spec == 1:
+            px(img, GRASS_SHADES[0], (hx, hy, 1, 1))
+
+
+def _blade(img, x, base_y, height, lean=0):
+    tip = (118, 182, 88)
+    light = (96, 156, 74)
+    mid = (78, 134, 60)
+    base_c = (52, 100, 44)
+    for h in range(height):
+        y = base_y - h
+        bx = x + (lean if h >= height - 1 else 0)
+        if h == 0:
+            c = base_c
+        elif h == height - 1:
+            c = tip
+        elif h >= height - 2:
+            c = light
+        else:
+            c = mid
+        px(img, c, (bx, y, 1, 1))
+        # тонкая тень у основания слева — объём
+        if 0 < h < height - 1 and bx - 1 >= 0:
+            px(img, base_c, (bx - 1, y, 1, 1))
+
+
 def make_grass(variant=0):
     img = surface((32, 32))
-    bases = [
-        (70, 124, 58),
-        (64, 118, 55),
-        (76, 132, 62),
-        (67, 127, 66),
-        (82, 137, 61),
-    ]
-    img.fill(bases[variant % len(bases)])
-    flecks = [
-        ((82, 145, 67), (3 + variant, 5, 3, 2)),
-        ((48, 101, 47), (14, 2 + variant % 3, 2, 3)),
-        ((94, 156, 72), (23, 8, 4, 2)),
-        ((58, 113, 50), (8, 18, 3 + variant % 2, 2)),
-        ((102, 164, 77), (20, 23 - variant % 4, 3, 3)),
-        ((47, 93, 44), (28 - variant % 5, 28, 2, 2)),
-        ((91, 147, 82), (6, 27 - variant % 3, 5, 1)),
-        ((55, 106, 58), (24 - variant % 4, 16, 4, 1)),
-    ]
-    if variant % 2 == 1:
-        flecks.extend(
-            [
-                ((111, 159, 77), (11, 9, 2, 5)),
-                ((52, 97, 47), (17, 25, 5, 2)),
-            ]
-        )
-    if variant % 3 == 2:
-        flecks.extend(
-            [
-                ((122, 167, 78), (2, 21, 2, 4)),
-                ((61, 107, 44), (29, 11, 2, 5)),
-            ]
-        )
-    for color, rect in flecks:
-        px(img, color, rect)
+    _grass_base(img, seed=variant + 1)
+
+    # лезвия распределены по всей высоте тайла, чтобы при замостке
+    # не появлялись горизонтальные полосы
+    if variant == 0:
+        # прямые лезвия средней высоты
+        for x, y, h in [
+            (5, 12, 5),
+            (11, 8, 4),
+            (18, 27, 5),
+            (24, 15, 4),
+            (28, 23, 6),
+            (3, 21, 3),
+            (14, 30, 5),
+            (21, 11, 4),
+            (8, 29, 4),
+            (26, 6, 5),
+            (2, 17, 3),
+            (16, 5, 4),
+        ]:
+            _blade(img, x, y, h)
+    elif variant == 1:
+        # лезвия наклонены вправо — ветер
+        for x, y, h in [
+            (4, 26, 5),
+            (10, 9, 5),
+            (16, 18, 4),
+            (22, 30, 5),
+            (27, 13, 6),
+            (8, 21, 4),
+            (19, 7, 5),
+            (13, 30, 5),
+            (25, 24, 4),
+            (6, 6, 4),
+            (30, 17, 5),
+        ]:
+            _blade(img, x, y, h, lean=1)
+    elif variant == 2:
+        # короткая густая трава
+        for x, y, h in [
+            (3, 27, 3),
+            (7, 12, 3),
+            (11, 20, 2),
+            (15, 8, 3),
+            (19, 27, 3),
+            (23, 16, 2),
+            (27, 7, 3),
+            (5, 23, 2),
+            (13, 24, 3),
+            (21, 30, 2),
+            (29, 24, 3),
+            (9, 30, 2),
+            (17, 13, 3),
+            (25, 6, 3),
+        ]:
+            _blade(img, x, y, h)
+    else:
+        # высокая трава, некоторые лезвия наклонены
+        for x, y, h, lean in [
+            (5, 12, 7, 0),
+            (9, 25, 6, 1),
+            (14, 8, 7, -1),
+            (19, 24, 8, 0),
+            (24, 15, 6, 1),
+            (28, 30, 7, -1),
+            (3, 22, 4, 0),
+            (17, 30, 5, 1),
+            (11, 6, 6, 0),
+            (22, 9, 5, -1),
+            (7, 18, 5, 1),
+        ]:
+            _blade(img, x, y, h, lean)
+
     return img
 
 
@@ -349,7 +463,6 @@ def main():
         "tiles/grass_2.png": make_grass(1),
         "tiles/grass_3.png": make_grass(2),
         "tiles/grass_4.png": make_grass(3),
-        "tiles/grass_5.png": make_grass(4),
         "tiles/dirt.png": make_dirt(),
         "tiles/tavern_planks.png": make_planks(),
         "tiles/tilled_soil.png": make_tilled_soil(),

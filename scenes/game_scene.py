@@ -1,4 +1,5 @@
 import math
+import random
 
 import pygame
 
@@ -29,15 +30,12 @@ class GameScene:
             "tiles/grass_2.png",
             "tiles/grass_3.png",
             "tiles/grass_4.png",
-            "tiles/grass_5.png",
         ]
-        self.grass_decor = [
-            "decor/grass_tuft_1.png",
-            "decor/grass_tuft_2.png",
-            "decor/clover.png",
+        self.flower_decor = [
             "decor/flowers_blue.png",
             "decor/flowers_yellow.png",
         ]
+        self._flower_positions = self._pick_flower_positions(random.randint(1, 10))
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -47,6 +45,13 @@ class GameScene:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             return "menu"
         return None
+
+    def _pick_flower_positions(self, count):
+        tile_w, tile_h = 32, 32
+        cols = self.width // tile_w
+        rows = self.height // tile_h
+        all_cells = [(c, r) for r in range(rows) for c in range(cols)]
+        return set(random.sample(all_cells, min(count, len(all_cells))))
 
     def update(self):
         self.engine.update()
@@ -75,47 +80,45 @@ class GameScene:
 
     def _draw_background(self, surface):
         grass_tiles = [
-            tile
-            for tile in (self.assets.optional_image(path) for path in self.grass_tiles)
-            if tile is not None
+            img
+            for img in (self.assets.optional_image(p) for p in self.grass_tiles)
+            if img is not None
         ]
         if not grass_tiles:
-            grass = self.assets.optional_image("tiles/grass.png")
-            grass_tiles = [grass] if grass is not None else []
-
+            grass_tiles = [self.assets.optional_image("tiles/grass.png")]
+            grass_tiles = [g for g in grass_tiles if g is not None]
         if not grass_tiles:
             surface.fill(COLORS["bg"])
+            self._draw_tower_garden(surface)
             return
 
         tile_w, tile_h = grass_tiles[0].get_size()
-        for y in range(0, self.height, tile_h):
-            for x in range(0, self.width, tile_w):
-                index = _stable_noise(x // tile_w, y // tile_h, 5) % len(grass_tiles)
+        for row, y in enumerate(range(0, self.height, tile_h)):
+            for col, x in enumerate(range(0, self.width, tile_w)):
+                index = _stable_noise(col, row, 5) % len(grass_tiles)
                 surface.blit(grass_tiles[index], (x, y))
 
         self._draw_grass_decor(surface, tile_w, tile_h)
         self._draw_tower_garden(surface)
 
     def _draw_grass_decor(self, surface, tile_w, tile_h):
-        decor_images = [
+        flower_images = [
             img
-            for img in (self.assets.optional_image(path) for path in self.grass_decor)
+            for img in (self.assets.optional_image(path) for path in self.flower_decor)
             if img is not None
         ]
-        if not decor_images:
+        if not flower_images:
             return
 
-        for row, y in enumerate(range(0, self.height, tile_h)):
-            for col, x in enumerate(range(0, self.width, tile_w)):
-                roll = _stable_noise(col, row, 17)
-                if roll % 100 >= 22:
-                    continue
-                img = decor_images[(roll // 100) % len(decor_images)]
-                max_x = max(1, tile_w - img.get_width())
-                max_y = max(1, tile_h - img.get_height())
-                offset_x = _stable_noise(col, row, 23) % max_x
-                offset_y = _stable_noise(col, row, 31) % max_y
-                surface.blit(img, (x + offset_x, y + offset_y))
+        for col, row in self._flower_positions:
+            x = col * tile_w
+            y = row * tile_h
+            img = flower_images[_stable_noise(col, row, 41) % len(flower_images)]
+            max_x = max(1, tile_w - img.get_width())
+            max_y = max(1, tile_h - img.get_height())
+            offset_x = _stable_noise(col, row, 23) % max_x
+            offset_y = _stable_noise(col, row, 31) % max_y
+            surface.blit(img, (x + offset_x, y + offset_y))
 
     def _draw_tower_garden(self, surface):
         tower = self.engine.tower
