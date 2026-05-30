@@ -293,7 +293,8 @@ class GameScene:
     def _draw_wave_button(self, surface):
         rect = self._wave_button_rect()
         active = self.engine.wave_ready
-        alpha = 255 if active else 100
+        alpha = 255 if active else 110
+        progress = self.engine.wave_progress
 
         img = self.assets.optional_image("ui/wave_button.png")
         if img is not None:
@@ -305,6 +306,13 @@ class GameScene:
             overlay.fill((88, 52, 28, alpha))
             surface.blit(overlay, rect)
             pygame.draw.rect(surface, (148, 98, 54), rect, 2)
+
+        # прогресс-заливка поверх текстуры
+        fill_w = int(rect.width * progress)
+        if fill_w > 0:
+            fill = pygame.Surface((fill_w, rect.height), pygame.SRCALPHA)
+            fill.fill((200, 170, 60, 60 if active else 45))
+            surface.blit(fill, rect.topleft)
 
         wave_num = self.engine.wave_index + 1
         label = f"Волна {wave_num}"

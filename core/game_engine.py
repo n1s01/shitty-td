@@ -62,6 +62,13 @@ class GameEngine:
             self.tower_last_shot_dir = (dx / dist, dy / dist)
 
     @property
+    def wave_progress(self):
+        if not self.wave_active or self.wave_index >= len(GAME_CONFIG["waves"]):
+            return 1.0
+        wave = GAME_CONFIG["waves"][self.wave_index]
+        return self.spawned_this_wave / max(1, wave["count"])
+
+    @property
     def wave_ready(self):
         waves = GAME_CONFIG["waves"]
         return (
