@@ -4,6 +4,7 @@ import pygame
 
 
 ASSET_ROOT = Path(__file__).resolve().parents[1] / "assets"
+TRANSPARENT_MATTE = (70, 124, 58, 0)
 
 
 class AssetStore:
@@ -28,15 +29,14 @@ class AssetStore:
 
 
 def _load_png_surface(path):
-    try:
-        return pygame.image.load(path).convert_alpha()
-    except pygame.error:
-        pass
-
     from PIL import Image
 
     with Image.open(path) as source:
         source = source.convert("RGBA")
+        pixels = [
+            TRANSPARENT_MATTE if pixel[3] == 0 else pixel for pixel in source.getdata()
+        ]
+        source.putdata(pixels)
         return pygame.image.frombytes(
             source.tobytes(), source.size, "RGBA"
         ).convert_alpha()

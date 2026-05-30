@@ -5,7 +5,7 @@ import pygame
 # python3.14 require _freetype not pygame.freetype
 from pygame import _freetype  # type: ignore[attr-defined]
 
-from config import COLORS
+from config import COLORS, GAME_CONFIG
 from core.game_engine import GameEngine
 from core.models import RangedEnemy
 from view.assets import AssetStore
@@ -24,6 +24,20 @@ class GameScene:
         self.assets = AssetStore()
         self.font = _make_font(14)
         self.game_over_font = _make_font(48)
+        self.grass_tiles = [
+            "tiles/grass_1.png",
+            "tiles/grass_2.png",
+            "tiles/grass_3.png",
+            "tiles/grass_4.png",
+            "tiles/grass_5.png",
+        ]
+        self.grass_decor = [
+            "decor/grass_tuft_1.png",
+            "decor/grass_tuft_2.png",
+            "decor/clover.png",
+            "decor/flowers_blue.png",
+            "decor/flowers_yellow.png",
+        ]
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -60,16 +74,48 @@ class GameScene:
             self._draw_game_over(surface)
 
     def _draw_background(self, surface):
-        grass = self.assets.optional_image("tiles/grass.png")
-        if grass is None:
+        grass_tiles = [
+            tile
+            for tile in (self.assets.optional_image(path) for path in self.grass_tiles)
+            if tile is not None
+        ]
+        if not grass_tiles:
+            grass = self.assets.optional_image("tiles/grass.png")
+            grass_tiles = [grass] if grass is not None else []
+
+        if not grass_tiles:
             surface.fill(COLORS["bg"])
             return
 
-        for y in range(0, self.height, grass.get_height()):
-            for x in range(0, self.width, grass.get_width()):
-                surface.blit(grass, (x, y))
+        tile_w, tile_h = grass_tiles[0].get_size()
+        for y in range(0, self.height, tile_h):
+            for x in range(0, self.width, tile_w):
+                index = _stable_noise(x // tile_w, y // tile_h, 5) % len(grass_tiles)
+                surface.blit(grass_tiles[index], (x, y))
 
+        self._draw_grass_decor(surface, tile_w, tile_h)
         self._draw_tower_garden(surface)
+
+    def _draw_grass_decor(self, surface, tile_w, tile_h):
+        decor_images = [
+            img
+            for img in (self.assets.optional_image(path) for path in self.grass_decor)
+            if img is not None
+        ]
+        if not decor_images:
+            return
+
+        for row, y in enumerate(range(0, self.height, tile_h)):
+            for col, x in enumerate(range(0, self.width, tile_w)):
+                roll = _stable_noise(col, row, 17)
+                if roll % 100 >= 22:
+                    continue
+                img = decor_images[(roll // 100) % len(decor_images)]
+                max_x = max(1, tile_w - img.get_width())
+                max_y = max(1, tile_h - img.get_height())
+                offset_x = _stable_noise(col, row, 23) % max_x
+                offset_y = _stable_noise(col, row, 31) % max_y
+                surface.blit(img, (x + offset_x, y + offset_y))
 
     def _draw_tower_garden(self, surface):
         tower = self.engine.tower
@@ -151,12 +197,35 @@ class GameScene:
         else:
             pygame.draw.rect(surface, COLORS["tower_fill"], rect)
             pygame.draw.rect(surface, COLORS["tower_outline"], rect, 3)
+        self._draw_tower_keeper(surface)
         text_surf, text_rect = self.font.render(f"HP: {tower.hp}", COLORS["tower_text"])
         hitbox_half = tower.hitbox_size // 2
         surface.blit(
             text_surf,
             (int(tower.x) - text_rect.width // 2, int(tower.y) - hitbox_half - 22),
         )
+
+    def _draw_tower_keeper(self, surface):
+        timer = self.engine.tower_shoot_timer
+        anim_frames = GAME_CONFIG["tower_shoot_anim_frames"]
+        if timer <= 0:
+            asset = "sprites/tower_keeper_idle.png"
+        elif timer > anim_frames * 0.45:
+            asset = "sprites/tower_keeper_shoot_1.png"
+        else:
+            asset = "sprites/tower_keeper_shoot_2.png"
+
+        keeper = self.assets.optional_image(asset, (38, 38))
+        if keeper is None:
+            return
+
+        if self.engine.tower_last_shot_dir[0] > 0:
+            keeper = pygame.transform.flip(keeper, True, False)
+        tower = self.engine.tower
+        recoil = 2 if 0 < timer <= anim_frames * 0.45 else 0
+        recoil_x = int(-self.engine.tower_last_shot_dir[0] * recoil)
+        rect = keeper.get_rect(center=(int(tower.x) + recoil_x, int(tower.y) - 22))
+        surface.blit(keeper, rect)
 
     def _draw_enemies(self, surface):
         for enemy in self.engine.enemies:
@@ -209,3 +278,9 @@ class GameScene:
         x = self.width // 2 - text_rect.width // 2
         y = self.height // 2 - text_rect.height // 2
         surface.blit(text_surf, (x, y))
+
+
+def _stable_noise(x, y, salt):
+    value = x * 734287 + y * 912931 + salt * 19349663
+    value = (value ^ (value >> 13)) * 1274126177
+    return (value ^ (value >> 16)) & 0xFFFFFFFF

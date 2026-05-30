@@ -3,7 +3,6 @@ from pathlib import Path
 import pygame
 from PIL import Image
 
-
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_ROOT = ROOT / "assets"
 
@@ -12,10 +11,16 @@ def surface(size):
     return pygame.Surface(size, pygame.SRCALPHA)
 
 
+TRANSPARENT_MATTE = (70, 124, 58, 0)
+
+
 def save(surf, path):
     path.parent.mkdir(parents=True, exist_ok=True)
     raw = pygame.image.tobytes(surf, "RGBA")
-    Image.frombytes("RGBA", surf.get_size(), raw).save(path)
+    img = Image.frombytes("RGBA", surf.get_size(), raw)
+    pixels = [TRANSPARENT_MATTE if pixel[3] == 0 else pixel for pixel in img.getdata()]
+    img.putdata(pixels)
+    img.save(path)
 
 
 def px(surf, color, rect):
@@ -26,19 +31,84 @@ def outline_rect(surf, color, rect, width=1):
     pygame.draw.rect(surf, color, rect, width)
 
 
-def make_grass():
+def make_grass(variant=0):
     img = surface((32, 32))
-    img.fill((70, 124, 58))
-    flecks = [
-        ((82, 145, 67), (3, 5, 3, 2)),
-        ((48, 101, 47), (14, 2, 2, 3)),
-        ((94, 156, 72), (23, 8, 4, 2)),
-        ((58, 113, 50), (8, 18, 3, 2)),
-        ((102, 164, 77), (20, 23, 3, 3)),
-        ((47, 93, 44), (28, 28, 2, 2)),
+    bases = [
+        (70, 124, 58),
+        (64, 118, 55),
+        (76, 132, 62),
+        (67, 127, 66),
+        (82, 137, 61),
     ]
+    img.fill(bases[variant % len(bases)])
+    flecks = [
+        ((82, 145, 67), (3 + variant, 5, 3, 2)),
+        ((48, 101, 47), (14, 2 + variant % 3, 2, 3)),
+        ((94, 156, 72), (23, 8, 4, 2)),
+        ((58, 113, 50), (8, 18, 3 + variant % 2, 2)),
+        ((102, 164, 77), (20, 23 - variant % 4, 3, 3)),
+        ((47, 93, 44), (28 - variant % 5, 28, 2, 2)),
+        ((91, 147, 82), (6, 27 - variant % 3, 5, 1)),
+        ((55, 106, 58), (24 - variant % 4, 16, 4, 1)),
+    ]
+    if variant % 2 == 1:
+        flecks.extend(
+            [
+                ((111, 159, 77), (11, 9, 2, 5)),
+                ((52, 97, 47), (17, 25, 5, 2)),
+            ]
+        )
+    if variant % 3 == 2:
+        flecks.extend(
+            [
+                ((122, 167, 78), (2, 21, 2, 4)),
+                ((61, 107, 44), (29, 11, 2, 5)),
+            ]
+        )
     for color, rect in flecks:
         px(img, color, rect)
+    return img
+
+
+def make_grass_tuft(variant):
+    img = surface((18, 18))
+    dark = (42, 94, 45)
+    mid = (73, 142, 62)
+    light = (111, 172, 78)
+    blades = [
+        (8, 14, 2, 5, mid),
+        (5, 12, 2, 7, dark),
+        (11, 11, 2, 8, light),
+        (14, 13, 2, 5, mid),
+    ]
+    if variant:
+        blades.extend([(3, 14, 2, 4, light), (9, 9, 2, 9, dark)])
+    for x, y, w, h, color in blades:
+        px(img, color, (x, y - h, w, h))
+    px(img, (48, 105, 45), (4, 14, 11, 2))
+    return img
+
+
+def make_clover():
+    img = surface((18, 18))
+    stem = (50, 111, 48)
+    leaf = (70, 156, 69)
+    shine = (116, 196, 91)
+    px(img, stem, (8, 8, 2, 7))
+    for rect in [(5, 6, 4, 4), (10, 6, 4, 4), (7, 3, 4, 4), (8, 9, 4, 4)]:
+        px(img, leaf, rect)
+    px(img, shine, (7, 4, 2, 1))
+    return img
+
+
+def make_flowers(color):
+    img = surface((18, 18))
+    stem = (48, 109, 48)
+    center = (238, 196, 84)
+    for base_x, base_y in [(5, 12), (12, 14), (9, 9)]:
+        px(img, stem, (base_x, base_y - 4, 1, 5))
+        px(img, color, (base_x - 1, base_y - 6, 3, 3))
+        px(img, center, (base_x, base_y - 5, 1, 1))
     return img
 
 
@@ -154,6 +224,53 @@ def make_firebolt():
     return img
 
 
+def make_tower_keeper(frame=0):
+    img = surface((32, 32))
+    skin = (220, 159, 100)
+    skin_dark = (141, 84, 58)
+    shirt = (66, 112, 147)
+    shirt_dark = (35, 61, 91)
+    hair = (72, 43, 31)
+    belt = (52, 34, 27)
+    bow = (99, 62, 36)
+    metal = (213, 209, 181)
+    flash = (255, 215, 86)
+
+    px(img, shirt_dark, (11, 15, 10, 10))
+    px(img, shirt, (12, 14, 10, 10))
+    px(img, belt, (11, 22, 12, 2))
+    px(img, skin_dark, (11, 8, 12, 10))
+    px(img, skin, (12, 7, 12, 9))
+    px(img, hair, (11, 5, 13, 5))
+    px(img, hair, (10, 8, 3, 5))
+    px(img, (38, 29, 27), (14, 12, 2, 2))
+    px(img, (38, 29, 27), (20, 12, 2, 2))
+    px(img, (118, 63, 45), (16, 16, 5, 1))
+
+    if frame == 0:
+        px(img, skin, (7, 16, 5, 3))
+        px(img, skin, (21, 16, 5, 3))
+        px(img, bow, (4, 18, 22, 2))
+        px(img, metal, (25, 16, 4, 6))
+    elif frame == 1:
+        px(img, skin, (7, 14, 6, 3))
+        px(img, skin, (21, 15, 6, 3))
+        px(img, bow, (4, 15, 23, 2))
+        px(img, metal, (26, 13, 4, 6))
+        px(img, (235, 235, 207), (2, 14, 5, 1))
+    else:
+        px(img, skin, (6, 13, 7, 3))
+        px(img, skin, (21, 14, 7, 3))
+        px(img, bow, (3, 14, 24, 2))
+        px(img, metal, (26, 11, 4, 6))
+        px(img, flash, (29, 12, 3, 2))
+        px(img, (255, 244, 161), (30, 10, 2, 6))
+
+    px(img, shirt_dark, (12, 25, 3, 5))
+    px(img, shirt_dark, (19, 25, 3, 5))
+    return img
+
+
 def make_pond(w, h, variant):
     img = surface((w, h))
     color_sets = [
@@ -227,11 +344,24 @@ def make_stump():
 def main():
     pygame.init()
     assets = {
-        "tiles/grass.png": make_grass(),
+        "tiles/grass.png": make_grass(0),
+        "tiles/grass_1.png": make_grass(0),
+        "tiles/grass_2.png": make_grass(1),
+        "tiles/grass_3.png": make_grass(2),
+        "tiles/grass_4.png": make_grass(3),
+        "tiles/grass_5.png": make_grass(4),
         "tiles/dirt.png": make_dirt(),
         "tiles/tavern_planks.png": make_planks(),
         "tiles/tilled_soil.png": make_tilled_soil(),
+        "decor/grass_tuft_1.png": make_grass_tuft(0),
+        "decor/grass_tuft_2.png": make_grass_tuft(1),
+        "decor/clover.png": make_clover(),
+        "decor/flowers_blue.png": make_flowers((94, 139, 214)),
+        "decor/flowers_yellow.png": make_flowers((228, 207, 79)),
         "sprites/tavern_tower.png": make_tower(),
+        "sprites/tower_keeper_idle.png": make_tower_keeper(0),
+        "sprites/tower_keeper_shoot_1.png": make_tower_keeper(1),
+        "sprites/tower_keeper_shoot_2.png": make_tower_keeper(2),
         "sprites/enemy_raider.png": make_enemy_raider(),
         "sprites/enemy_ranged.png": make_enemy_ranged(),
         "sprites/projectile_arrow.png": make_arrow(),

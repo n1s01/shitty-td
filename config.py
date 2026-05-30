@@ -38,6 +38,7 @@ GAME_CONFIG = {
     "enemy_damage": 10,
     "projectile_speed": 8,
     "projectile_size": 4,
+    "tower_shoot_anim_frames": 14,
     "ranged_enemy_range": 400,
     "ranged_enemy_fire_rate": 90,
     "ranged_enemy_initial_delay": 75,

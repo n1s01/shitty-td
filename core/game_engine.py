@@ -28,11 +28,15 @@ class GameEngine:
         self._generate_obstacles()
         self.spawn_timer = 0
         self.spawn_counter = 0
+        self.tower_shoot_timer = 0
+        self.tower_last_shot_dir = (1, 0)
         self.is_game_over = False
 
     def update(self):
         if self.is_game_over:
             return
+        if self.tower_shoot_timer > 0:
+            self.tower_shoot_timer -= 1
         self._handle_spawning()
         self._update_enemies()
         self._update_projectiles()
@@ -52,6 +56,8 @@ class GameEngine:
                     speed=GAME_CONFIG["projectile_speed"],
                 )
             )
+            self.tower_shoot_timer = GAME_CONFIG["tower_shoot_anim_frames"]
+            self.tower_last_shot_dir = (dx / dist, dy / dist)
 
     def _handle_spawning(self):
         self.spawn_timer += 1
