@@ -37,4 +37,6 @@ def _load_png_surface(path):
 
     with Image.open(path) as source:
         source = source.convert("RGBA")
-        return pygame.image.frombytes(source.tobytes(), source.size, "RGBA").convert_alpha()
+        return pygame.image.frombytes(
+            source.tobytes(), source.size, "RGBA"
+        ).convert_alpha()

@@ -86,11 +86,13 @@ class Enemy:
 
 
 class RangedEnemy(Enemy):
-    def __init__(self, x, y, size, hp, speed, damage, attack_range, fire_rate):
+    def __init__(
+        self, x, y, size, hp, speed, damage, attack_range, fire_rate, initial_delay
+    ):
         super().__init__(x, y, size, hp, speed, damage)
         self.attack_range = attack_range
         self.fire_rate = fire_rate
-        self.fire_cooldown = 0
+        self.fire_cooldown = initial_delay
 
     def move_towards(self, target_x, target_y):
         if self.distance_to(target_x, target_y) <= self.attack_range:

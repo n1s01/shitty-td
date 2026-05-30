@@ -82,6 +82,7 @@ class GameEngine:
                 damage=GAME_CONFIG["enemy_damage"],
                 attack_range=GAME_CONFIG["ranged_enemy_range"],
                 fire_rate=GAME_CONFIG["ranged_enemy_fire_rate"],
+                initial_delay=GAME_CONFIG["ranged_enemy_initial_delay"],
             )
         else:
             enemy = Enemy(
@@ -154,10 +155,11 @@ class GameEngine:
             enemy.move_towards(self.tower.x, self.tower.y)
 
             if isinstance(enemy, RangedEnemy):
-                enemy.update_cooldown()
-                if enemy.in_range(self.tower.x, self.tower.y) and enemy.can_fire():
-                    self._enemy_shoot(enemy)
-                    enemy.reset_cooldown()
+                if enemy.in_range(self.tower.x, self.tower.y):
+                    enemy.update_cooldown()
+                    if enemy.can_fire():
+                        self._enemy_shoot(enemy)
+                        enemy.reset_cooldown()
             else:
                 if _circle_touches_rect(
                     enemy.x, enemy.y, enemy.size / 2, self.tower.hitbox_rect
