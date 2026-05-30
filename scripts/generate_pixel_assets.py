@@ -321,6 +321,29 @@ def make_enemy_ranged():
     return img
 
 
+def make_wave_button():
+    w, h = 120, 36
+    img = surface((w, h))
+    # основа — тёмное дерево
+    img.fill((88, 52, 28))
+    # светлая середина доски
+    px(img, (118, 72, 39), (3, 3, w - 6, h - 6))
+    # горизонтальные прожилки дерева
+    for y in (8, 14, 20, 26):
+        px(img, (104, 63, 34), (5, y, w - 10, 1))
+        px(img, (132, 84, 46), (5, y + 1, w - 10, 1))
+    # вертикальные гвоздики по краям
+    for nail_x in (10, w - 11):
+        px(img, (62, 38, 24), (nail_x, 8, 5, 20))
+        px(img, (148, 102, 58), (nail_x + 1, 9, 3, 18))
+        px(img, (198, 158, 88), (nail_x + 1, 9, 2, 2))
+    # тёмная рамка
+    outline_rect(img, (52, 29, 14), (0, 0, w, h), 2)
+    # внутренняя светлая рамка — объём
+    outline_rect(img, (148, 98, 54), (3, 3, w - 6, h - 6), 1)
+    return img
+
+
 def make_arrow():
     img = surface((24, 8))
     px(img, (212, 189, 119), (1, 3, 16, 2))
@@ -487,6 +510,7 @@ def main():
         "obstacles/dry_branch_2.png": make_branch(56, 32, 1),
         "obstacles/stones_1.png": make_stones(),
         "obstacles/stump_1.png": make_stump(),
+        "ui/wave_button.png": make_wave_button(),
     }
     for rel_path, img in assets.items():
         save(img, ASSET_ROOT / rel_path)

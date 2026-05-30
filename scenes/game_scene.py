@@ -37,8 +37,18 @@ class GameScene:
         ]
         self._flower_positions = self._pick_flower_positions(random.randint(1, 10))
 
+    def _wave_button_rect(self):
+        img = self.assets.optional_image("ui/wave_button.png")
+        w = img.get_width() if img else 120
+        h = img.get_height() if img else 36
+        return pygame.Rect(self.width - w - 16, self.height - h - 16, w, h)
+
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.engine.wave_ready:
+                if self._wave_button_rect().collidepoint(event.pos):
+                    self.engine.start_wave()
+                    return None
             if not self.engine.is_game_over:
                 self.engine.shoot_at(event.pos[0], event.pos[1])
             return None
@@ -75,7 +85,11 @@ class GameScene:
             COLORS["enemy_projectile_fill"],
             10,
         )
-        if self.engine.is_game_over:
+        if not self.engine.is_victory:
+            self._draw_wave_button(surface)
+        if self.engine.is_victory:
+            self._draw_victory(surface)
+        elif self.engine.is_game_over:
             self._draw_game_over(surface)
 
     def _draw_background(self, surface):
@@ -245,6 +259,8 @@ class GameScene:
             else:
                 pygame.draw.circle(surface, COLORS["enemy_fill"], pos, r)
                 pygame.draw.circle(surface, COLORS["enemy_outline"], pos, r, 2)
+            if isinstance(enemy, RangedEnemy):
+                pygame.draw.circle(surface, (180, 100, 220), pos, enemy.attack_range, 1)
             if enemy.hp < enemy.max_hp:
                 self._draw_enemy_hp(surface, enemy, r)
 
@@ -273,6 +289,36 @@ class GameScene:
                 end_x = int(proj.x - proj.vx * tail_length)
                 end_y = int(proj.y - proj.vy * tail_length)
                 pygame.draw.line(surface, fallback_color, (cx, cy), (end_x, end_y), 2)
+
+    def _draw_wave_button(self, surface):
+        rect = self._wave_button_rect()
+        active = self.engine.wave_ready
+        alpha = 255 if active else 100
+
+        img = self.assets.optional_image("ui/wave_button.png")
+        if img is not None:
+            btn = img.copy()
+            btn.set_alpha(alpha)
+            surface.blit(btn, rect)
+        else:
+            overlay = pygame.Surface(rect.size, pygame.SRCALPHA)
+            overlay.fill((88, 52, 28, alpha))
+            surface.blit(overlay, rect)
+            pygame.draw.rect(surface, (148, 98, 54), rect, 2)
+
+        wave_num = self.engine.wave_index + 1
+        label = f"Волна {wave_num}"
+        text_color = (235, 210, 130) if active else (160, 140, 90)
+        text_surf, text_rect = self.font.render(label, text_color)
+        tx = rect.centerx - text_rect.width // 2
+        ty = rect.centery - text_rect.height // 2
+        surface.blit(text_surf, (tx, ty))
+
+    def _draw_victory(self, surface):
+        text_surf, text_rect = self.game_over_font.render("ПОБЕДА!", (255, 220, 60))
+        x = self.width // 2 - text_rect.width // 2
+        y = self.height // 2 - text_rect.height // 2
+        surface.blit(text_surf, (x, y))
 
     def _draw_game_over(self, surface):
         text_surf, text_rect = self.game_over_font.render(

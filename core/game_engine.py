@@ -27,7 +27,9 @@ class GameEngine:
         )
         self._generate_obstacles()
         self.spawn_timer = 0
-        self.spawn_counter = 0
+        self.spawned_this_wave = 0
+        self.wave_index = 0
+        self.wave_active = True
         self.tower_shoot_timer = 0
         self.tower_last_shot_dir = (1, 0)
         self.is_game_over = False
@@ -59,13 +61,42 @@ class GameEngine:
             self.tower_shoot_timer = GAME_CONFIG["tower_shoot_anim_frames"]
             self.tower_last_shot_dir = (dx / dist, dy / dist)
 
-    def _handle_spawning(self):
-        self.spawn_timer += 1
-        if self.spawn_timer >= GAME_CONFIG["enemy_spawn_delay"]:
-            self.spawn_timer = 0
-            self._spawn_enemy()
+    @property
+    def wave_ready(self):
+        waves = GAME_CONFIG["waves"]
+        return (
+            not self.wave_active
+            and not self.is_game_over
+            and self.wave_index < len(waves)
+        )
 
-    def _spawn_enemy(self):
+    @property
+    def is_victory(self):
+        return (
+            not self.wave_active
+            and self.wave_index >= len(GAME_CONFIG["waves"])
+            and not self.enemies
+        )
+
+    def start_wave(self):
+        self.wave_active = True
+        self.spawned_this_wave = 0
+        self.spawn_timer = 0
+
+    def _handle_spawning(self):
+        if not self.wave_active:
+            return
+        wave = GAME_CONFIG["waves"][self.wave_index]
+        if self.spawned_this_wave < wave["count"]:
+            self.spawn_timer += 1
+            if self.spawn_timer >= wave["interval"]:
+                self.spawn_timer = 0
+                self._spawn_enemy(wave)
+        elif not self.enemies:
+            self.wave_active = False
+            self.wave_index += 1
+
+    def _spawn_enemy(self, wave):
         side = random.randint(0, 3)
         size = GAME_CONFIG["enemy_size"]
         if side == 0:
@@ -77,8 +108,9 @@ class GameEngine:
         else:
             x, y = -size, random.uniform(0, self.height)
 
-        self.spawn_counter += 1
-        if self.spawn_counter % 3 == 0:
+        ranged_every = wave["ranged_every"]
+        is_ranged = ranged_every > 0 and self.spawned_this_wave % ranged_every == 0
+        if is_ranged:
             enemy = RangedEnemy(
                 x=x,
                 y=y,
@@ -100,6 +132,7 @@ class GameEngine:
                 damage=GAME_CONFIG["enemy_damage"],
             )
 
+        self.spawned_this_wave += 1
         self._assign_path(enemy)
         self.enemies.append(enemy)
 

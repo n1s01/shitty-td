@@ -58,6 +58,13 @@ GAME_CONFIG = {
         {"asset": "obstacles/stump_1.png", "size": (36, 36)},
     ],
     "map_obstacle_safe_radius_factor": 0.18,
+    "waves": [
+        {"count": 6, "interval": 90, "ranged_every": 0},
+        {"count": 9, "interval": 80, "ranged_every": 4},
+        {"count": 12, "interval": 70, "ranged_every": 3},
+        {"count": 16, "interval": 60, "ranged_every": 3},
+        {"count": 20, "interval": 50, "ranged_every": 2},
+    ],
 }
 
 SETTINGS_FILE = "data/settings.json"
