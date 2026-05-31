@@ -3,18 +3,11 @@ import random
 
 import pygame
 
-# python3.14 require _freetype not pygame.freetype
-from pygame import _freetype  # type: ignore[attr-defined]
-
 from config import COLORS, GAME_CONFIG
 from core.game_engine import GameEngine
 from core.models import RangedEnemy
 from view.assets import AssetStore
-
-
-def _make_font(size):
-    _freetype.init()
-    return _freetype.Font(None, size)
+from view.fonts import make_font
 
 
 class GameScene:
@@ -23,8 +16,8 @@ class GameScene:
         self.height = height
         self.engine = GameEngine(width, height)
         self.assets = AssetStore()
-        self.font = _make_font(14)
-        self.game_over_font = _make_font(48)
+        self.font = make_font(14)
+        self.game_over_font = make_font(48)
         self.grass_tiles = [
             "tiles/grass_1.png",
             "tiles/grass_2.png",
@@ -85,12 +78,12 @@ class GameScene:
             COLORS["enemy_projectile_fill"],
             10,
         )
-        if not self.engine.is_victory:
-            self._draw_wave_button(surface)
         if self.engine.is_victory:
             self._draw_victory(surface)
         elif self.engine.is_game_over:
             self._draw_game_over(surface)
+        else:
+            self._draw_wave_button(surface)
 
     def _draw_background(self, surface):
         grass_tiles = [
@@ -266,7 +259,9 @@ class GameScene:
                 else:
                     surface.blit(img, img.get_rect(center=pos))
             else:
-                color = (220, 60, 60) if enemy.hit_flash > 0 else COLORS["enemy_fill"]
+                color = (
+                    (220, 60, 60) if enemy.hit_flash_time > 0 else COLORS["enemy_fill"]
+                )
                 pygame.draw.circle(surface, color, pos, r)
                 pygame.draw.circle(surface, COLORS["enemy_outline"], pos, r, 2)
             if isinstance(enemy, RangedEnemy):

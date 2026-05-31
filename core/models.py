@@ -1,5 +1,7 @@
 import math
 
+from config import GAME_CONFIG
+
 
 class Obstacle:
     def __init__(self, x, y, width, height, asset):
@@ -76,8 +78,9 @@ class Enemy:
         if self.knockback_vx != 0 or self.knockback_vy != 0:
             self.x += self.knockback_vx
             self.y += self.knockback_vy
-            self.knockback_vx *= 0.75
-            self.knockback_vy *= 0.75
+            decay = GAME_CONFIG["knockback_decay"]
+            self.knockback_vx *= decay
+            self.knockback_vy *= decay
             if abs(self.knockback_vx) < 0.05 and abs(self.knockback_vy) < 0.05:
                 self.knockback_vx = 0
                 self.knockback_vy = 0
