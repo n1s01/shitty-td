@@ -256,6 +256,9 @@ class GameEngine:
             dist = math.hypot(proj.x - enemy.x, proj.y - enemy.y)
             if dist < (enemy.size + proj_size):
                 enemy.take_damage(1)
+                enemy.knockback_vx = proj.vx * GAME_CONFIG["knockback_force"]
+                enemy.knockback_vy = proj.vy * GAME_CONFIG["knockback_force"]
+                enemy.hit_flash_time = GAME_CONFIG["hit_flash_frames"]
                 if enemy.is_dead:
                     self.enemies.remove(enemy)
                 self.projectiles.remove(proj)

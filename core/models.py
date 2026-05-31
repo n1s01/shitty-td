@@ -52,6 +52,9 @@ class Enemy:
         self.damage = damage
         self.path = None
         self.path_index = 0
+        self.knockback_vx = 0
+        self.knockback_vy = 0
+        self.hit_flash_time = 0
 
     def move_towards(self, target_x, target_y):
         next_x, next_y = self._next_target(target_x, target_y)
@@ -68,6 +71,16 @@ class Enemy:
         else:
             self.x += (dx / dist) * self.speed
             self.y += (dy / dist) * self.speed
+        if self.hit_flash_time > 0:
+            self.hit_flash_time -= 1
+        if self.knockback_vx != 0 or self.knockback_vy != 0:
+            self.x += self.knockback_vx
+            self.y += self.knockback_vy
+            self.knockback_vx *= 0.75
+            self.knockback_vy *= 0.75
+            if abs(self.knockback_vx) < 0.05 and abs(self.knockback_vy) < 0.05:
+                self.knockback_vx = 0
+                self.knockback_vy = 0
 
     def _next_target(self, fallback_x, fallback_y):
         if self.path and self.path_index < len(self.path):

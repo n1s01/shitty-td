@@ -65,6 +65,9 @@ GAME_CONFIG = {
         {"count": 16, "interval": 60, "ranged_every": 3},
         {"count": 20, "interval": 50, "ranged_every": 2},
     ],
+    "knockback_force": 4,
+    "knockback_decay": 0.75,
+    "hit_flash_frames": 10,
 }
 
 SETTINGS_FILE = "data/settings.json"

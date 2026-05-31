@@ -255,9 +255,19 @@ class GameScene:
             )
             img = self.assets.optional_image(asset, (enemy.size + 14, enemy.size + 14))
             if img is not None:
-                surface.blit(img, img.get_rect(center=pos))
+                if enemy.hit_flash_time > 0:
+                    t = enemy.hit_flash_time / GAME_CONFIG["hit_flash_frames"]
+                    gb = int(255 * (1 - t * 0.75))
+                    tinted = img.copy()
+                    tinted.fill(
+                        (255, gb, gb, 255), special_flags=pygame.BLEND_RGBA_MULT
+                    )
+                    surface.blit(tinted, tinted.get_rect(center=pos))
+                else:
+                    surface.blit(img, img.get_rect(center=pos))
             else:
-                pygame.draw.circle(surface, COLORS["enemy_fill"], pos, r)
+                color = (220, 60, 60) if enemy.hit_flash > 0 else COLORS["enemy_fill"]
+                pygame.draw.circle(surface, color, pos, r)
                 pygame.draw.circle(surface, COLORS["enemy_outline"], pos, r, 2)
             if isinstance(enemy, RangedEnemy):
                 pygame.draw.circle(surface, (180, 100, 220), pos, enemy.attack_range, 1)
