@@ -172,24 +172,24 @@ class SettingsScene:
         w, h = AVAILABLE_RESOLUTIONS[self.res_index]
         return f"{w}x{h}"
 
+    def _res_enabled(self):
+        return not self.settings["is_fullscreen"]
+
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
-            for btn in [
-                self.fullscreen_btn,
-                self.res_left,
-                self.res_right,
-                self.apply_btn,
-                self.back_btn,
-            ]:
+            hover_btns = [self.fullscreen_btn, self.apply_btn, self.back_btn]
+            if self._res_enabled():
+                hover_btns += [self.res_left, self.res_right]
+            for btn in hover_btns:
                 btn.check_hover(event.pos)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
             if self.fullscreen_btn.is_clicked(pos):
                 self.settings["is_fullscreen"] = not self.settings["is_fullscreen"]
                 self.fullscreen_btn.text = self._fullscreen_text()
-            elif self.res_left.is_clicked(pos):
+            elif self._res_enabled() and self.res_left.is_clicked(pos):
                 self.res_index = (self.res_index - 1) % len(AVAILABLE_RESOLUTIONS)
-            elif self.res_right.is_clicked(pos):
+            elif self._res_enabled() and self.res_right.is_clicked(pos):
                 self.res_index = (self.res_index + 1) % len(AVAILABLE_RESOLUTIONS)
             elif self.apply_btn.is_clicked(pos):
                 self.settings["resolution"] = AVAILABLE_RESOLUTIONS[self.res_index]
@@ -211,12 +211,15 @@ class SettingsScene:
         )
         surface.blit(title_surf, (self.width // 2 - title_rect.width // 2, 40))
         self.fullscreen_btn.draw(surface)
-        self.res_left.draw(surface)
-        self.res_right.draw(surface)
-        res_surf, res_rect = self.font.render(self._res_text(), COLORS["button_text"])
-        rx = self.width // 2 - res_rect.width // 2
-        ry = self.res_left.rect.centery - res_rect.height // 2
-        surface.blit(res_surf, (rx, ry))
+        if self._res_enabled():
+            self.res_left.draw(surface)
+            self.res_right.draw(surface)
+            res_surf, res_rect = self.font.render(
+                self._res_text(), COLORS["button_text"]
+            )
+            rx = self.width // 2 - res_rect.width // 2
+            ry = self.res_left.rect.centery - res_rect.height // 2
+            surface.blit(res_surf, (rx, ry))
         self.apply_btn.draw(surface)
         self.back_btn.draw(surface)
 
