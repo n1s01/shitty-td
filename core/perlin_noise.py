@@ -27,7 +27,6 @@ class PerlinNoise:
 
     @staticmethod
     def _fade(t):
-
         return t * t * t * (t * (t * 6 - 15) + 10)
 
     @staticmethod
@@ -35,12 +34,10 @@ class PerlinNoise:
         return a + t * (b - a)
 
     def _grad(self, hash_val, x, y):
-
         g = self._GRADIENTS[hash_val % 12]
         return g[0] * x + g[1] * y
 
     def noise2d(self, x, y):
-
         xi = int(math.floor(x)) & 255
         yi = int(math.floor(y)) & 255
 
@@ -60,7 +57,6 @@ class PerlinNoise:
         return self._lerp(x1, x2, v)
 
     def fractal_noise2d(self, x, y, octaves=4, persistence=0.5, lacunarity=2.0):
-
         value = 0.0
         amplitude = 1.0
         frequency = 1.0
@@ -77,7 +73,6 @@ class PerlinNoise:
     def generate_map(
         self, cols, rows, scale=0.1, octaves=4, persistence=0.5, lacunarity=2.0
     ):
-
         raw = [
             [
                 self.fractal_noise2d(

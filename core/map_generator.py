@@ -95,7 +95,6 @@ class MapGenerator:
         return biomes
 
     def _enforce_connectivity(self, biomes):
-
         tcol, trow = self._tower_tile()
         reachable = [[False] * self.cols for _ in range(self.rows)]
         stack = [(tcol, trow)]
@@ -115,7 +114,6 @@ class MapGenerator:
                     biomes[row][col] = WATER
 
     def _keep_largest_lake(self, biomes):
-
         seen = [[False] * self.cols for _ in range(self.rows)]
         components = []
         for row in range(self.rows):

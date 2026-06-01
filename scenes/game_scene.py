@@ -34,6 +34,7 @@ class GameScene:
         ]
 
         self._water_surface = None
+        self._hud_tick = 0
 
     def _wave_button_rect(self):
         img = self.assets.optional_image("ui/wave_button.png")
@@ -60,6 +61,7 @@ class GameScene:
 
     def update(self):
         self.engine.update()
+        self._hud_tick += 1
 
     def draw(self, surface):
         self._draw_background(surface)
@@ -123,7 +125,6 @@ class GameScene:
         return None
 
     def _build_water_surface(self):
-
         from core.perlin_noise import PerlinNoise
 
         surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
@@ -370,42 +371,33 @@ class GameScene:
         img_base = self.assets.optional_image("sprites/coin.png", (r * 2, r * 2))
         for coin in self.engine.coins:
             cx, cy = int(coin.x), int(coin.y)
-
-            if coin.collecting:
-                sz = max(2, int(r * 2 * coin.scale))
+            if coin.collecting or coin.is_dropping:
                 if img_base is not None:
-                    pygame.draw.circle(
-                        surface, (0, 0, 0, 120), (cx, cy + 2), max(1, sz // 2)
-                    )
-                    img = pygame.transform.scale(img_base, (sz, sz))
-                    surface.blit(img, img.get_rect(center=(cx, cy)))
+                    surface.blit(img_base, img_base.get_rect(center=(cx, cy)))
                 else:
-                    self._draw_coin_shape(surface, cx, cy, sz // 2, sz // 2, color)
-                continue
-
-            if coin.is_dropping:
-                draw_x, draw_y = cx, cy
-                spin_w = r * 2
+                    self._draw_coin_shape(surface, cx, cy, r * 2, r * 2, color)
             else:
-                draw_y = cy + int(2 * math.sin(coin.anim_tick * 0.09))
-                draw_x = cx
-                spin_w = max(
-                    int(r * 0.8), int(r * 2 * abs(math.cos(coin.anim_tick * 0.055)))
-                )
+                self._draw_spinning_coin(surface, cx, cy, r, coin.anim_tick)
 
-            d = r * 2
-            if img_base is not None:
+    def _draw_spinning_coin(self, surface, cx, cy, base_r, tick, shadow=True):
+        color = COIN_CONFIG["color"]
+        d = base_r * 2
+        img_base = self.assets.optional_image("sprites/coin.png", (d, d))
+        cy += int(2 * math.sin(tick * 0.09))
+        spin_w = max(int(base_r * 0.8), int(d * abs(math.cos(tick * 0.055))))
+        if img_base is not None:
+            if shadow:
                 shadow_r = pygame.Rect(0, 0, spin_w + 2, d + 2)
-                shadow_r.center = (draw_x + 2, draw_y + 3)
+                shadow_r.center = (cx + 2, cy + 3)
                 pygame.draw.ellipse(surface, (30, 30, 20), shadow_r)
-                img = (
-                    pygame.transform.scale(img_base, (spin_w, d))
-                    if spin_w != d
-                    else img_base
-                )
-                surface.blit(img, img.get_rect(center=(draw_x, draw_y)))
-            else:
-                self._draw_coin_shape(surface, draw_x, draw_y, spin_w, d, color)
+            img = (
+                pygame.transform.scale(img_base, (spin_w, d))
+                if spin_w != d
+                else img_base
+            )
+            surface.blit(img, img.get_rect(center=(cx, cy)))
+        else:
+            self._draw_coin_shape(surface, cx, cy, spin_w, d, color)
 
     def _draw_coin_shape(self, surface, cx, cy, w, h, color):
         shadow = pygame.Rect(0, 0, w + 2, h + 2)
@@ -448,15 +440,11 @@ class GameScene:
         )
 
         icon_x = x + pad
-        icon_y = y + (height - icon) // 2
-        coin = self.assets.optional_image("sprites/coin.png", (icon, icon))
-        if coin is not None:
-            surface.blit(coin, (icon_x, icon_y))
-        else:
-            r = icon // 2
-            cx, cy = icon_x + r, icon_y + r
-            pygame.draw.circle(surface, (120, 90, 10), (cx, cy), r)
-            pygame.draw.circle(surface, COIN_CONFIG["color"], (cx, cy), r - 2)
+        coin_cx = icon_x + icon // 2
+        coin_cy = y + height // 2
+        self._draw_spinning_coin(
+            surface, coin_cx, coin_cy, icon // 2, self._hud_tick, shadow=False
+        )
 
         text_x = icon_x + icon + gap
         surface.blit(text_surf, (text_x, y + (height - text_rect.height) // 2))

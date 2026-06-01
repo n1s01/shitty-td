@@ -181,7 +181,6 @@ class Coin:
         self.collecting = False
         self.collect_tx = 0
         self.collect_ty = 0
-        self.scale = 1.0
         self.pending_collect = False
 
     def start_collect(self, tx, ty, cx, cy):
@@ -208,7 +207,6 @@ class Coin:
             self.y = (
                 mt * mt * self._sy + 2 * mt * t * self._cy + t * t * self.collect_ty
             )
-            self.scale = max(0.15, 1.0 - t * 0.85)
             if t >= 1.0:
                 self.pending_collect = True
             return

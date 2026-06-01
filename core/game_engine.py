@@ -156,7 +156,6 @@ class GameEngine:
         self.enemies.append(enemy)
 
     def _mark_map_on_grid(self):
-
         ts = self.tile_size
         for row in range(self.tile_rows):
             for col in range(self.tile_cols):

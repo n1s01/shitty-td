@@ -41,7 +41,6 @@ GRASS_SHADES = [
 
 
 def _hash(x, y, seed):
-
     h = (x * 374761393 + y * 668265263 + seed * 2654435761) & 0xFFFFFFFF
     h ^= h >> 15
     h = (h * 2246822519) & 0xFFFFFFFF
@@ -50,7 +49,6 @@ def _hash(x, y, seed):
 
 
 def _shade_index(value):
-
     if value < 8:
         return 0
     if value < 30:
@@ -63,7 +61,6 @@ def _shade_index(value):
 
 
 def _grass_base(img, seed):
-
     w, h = img.get_size()
     for by in range(0, h, 2):
         for bx in range(0, w, 2):
@@ -430,7 +427,6 @@ def make_branch(w, h, variant):
 
 
 def make_sand():
-
     img = surface((32, 32))
     img.fill((196, 178, 128))
     for by in range(0, 32, 2):
