@@ -218,7 +218,7 @@ def make_clover():
 def make_flowers(color):
     img = surface((18, 18))
     stem = (48, 109, 48)
-    center = (238, 196, 84)
+    center = (242, 240, 250)  # светлая серединка — не путать с монетой
     for base_x, base_y in [(5, 12), (12, 14), (9, 9)]:
         px(img, stem, (base_x, base_y - 4, 1, 5))
         px(img, color, (base_x - 1, base_y - 6, 3, 3))
@@ -455,6 +455,80 @@ def make_branch(w, h, variant):
     return img
 
 
+def make_sand():
+    """Песчаный берег между травой и водой."""
+    img = surface((32, 32))
+    img.fill((196, 178, 128))
+    for by in range(0, 32, 2):
+        for bx in range(0, 32, 2):
+            v = _hash(bx, by, 71) % 100
+            if v > 72:
+                c = (210, 192, 142)
+            elif v < 24:
+                c = (176, 158, 110)
+            else:
+                c = (196, 178, 128)
+            px(img, c, (bx, by, 2, 2))
+    # влажные тёмные крапинки и редкая галька у кромки
+    for rect in [
+        (6, 8, 2, 2),
+        (20, 5, 2, 2),
+        (13, 22, 2, 2),
+        (26, 18, 2, 2),
+        (9, 27, 2, 2),
+    ]:
+        px(img, (150, 132, 96), rect)
+    return img
+
+
+def make_lily_pad(variant):
+    img = surface((14, 14))
+    dark = (38, 108, 60)
+    main = (58, 140, 78)
+    light = (96, 176, 104)
+    for rect in [(3, 4, 8, 6), (4, 3, 6, 8), (2, 6, 10, 3), (5, 2, 4, 10)]:
+        px(img, main, rect)
+    px(img, dark, (2, 9, 10, 2))
+    px(img, light, (5, 4, 3, 2))
+    # клиновидный вырез листа (тёмная вода)
+    px(img, dark, (7, 7, 4, 1))
+    px(img, dark, (8, 6, 3, 1))
+    if variant:  # цветок кувшинки
+        px(img, (242, 226, 188), (6, 6, 2, 2))
+        px(img, (240, 134, 160), (5, 5, 1, 1))
+        px(img, (240, 134, 160), (8, 8, 1, 1))
+    return img
+
+
+def make_reeds(variant):
+    img = surface((12, 20))
+    stalk = (74, 134, 60)
+    stalk_dark = (52, 104, 46)
+    cat = (120, 74, 40)
+    cat_light = (150, 98, 54)
+    for x, h, c in [(3, 16, stalk), (6, 19, stalk_dark), (9, 14, stalk)]:
+        px(img, c, (x, 20 - h, 2, h))
+    # початки рогоза
+    px(img, cat, (5, 3, 3, 6))
+    px(img, cat_light, (6, 4, 1, 4))
+    if variant:
+        px(img, cat, (2, 7, 2, 4))
+        px(img, cat_light, (2, 8, 1, 2))
+    return img
+
+
+def make_pebbles():
+    img = surface((12, 8))
+    for c, rect in [
+        ((120, 124, 120), (1, 3, 4, 3)),
+        ((150, 154, 148), (5, 1, 4, 4)),
+        ((96, 100, 98), (8, 4, 3, 2)),
+    ]:
+        px(img, c, rect)
+    px(img, (180, 184, 176), (6, 2, 1, 1))
+    return img
+
+
 def make_stones():
     img = surface((48, 32))
     for color, rect in [
@@ -489,11 +563,17 @@ def main():
         "tiles/dirt.png": make_dirt(),
         "tiles/tavern_planks.png": make_planks(),
         "tiles/tilled_soil.png": make_tilled_soil(),
+        "tiles/sand.png": make_sand(),
         "decor/grass_tuft_1.png": make_grass_tuft(0),
         "decor/grass_tuft_2.png": make_grass_tuft(1),
         "decor/clover.png": make_clover(),
         "decor/flowers_blue.png": make_flowers((94, 139, 214)),
-        "decor/flowers_yellow.png": make_flowers((228, 207, 79)),
+        "decor/flowers_purple.png": make_flowers((158, 96, 206)),
+        "decor/lily_pad_1.png": make_lily_pad(0),
+        "decor/lily_pad_2.png": make_lily_pad(1),
+        "decor/reeds_1.png": make_reeds(0),
+        "decor/reeds_2.png": make_reeds(1),
+        "decor/pebbles.png": make_pebbles(),
         "sprites/tavern_tower.png": make_tower(),
         "sprites/tower_keeper_idle.png": make_tower_keeper(0),
         "sprites/tower_keeper_shoot_1.png": make_tower_keeper(1),

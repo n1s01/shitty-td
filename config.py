@@ -49,10 +49,29 @@ GAME_CONFIG = {
     "ranged_enemy_projectile_size": 5,
     "grid_cols": 300,
     "grid_rows": 170,
-    "map_obstacle_count": 18,
-    "map_obstacles": [
-        {"asset": "obstacles/pond_1.png", "size": (64, 48)},
-        {"asset": "obstacles/pond_2.png", "size": (72, 48)},
+    # --- генерация биомов (core/map_generator.py) ---
+    "map_tile_size": 32,
+    "map_obstacle_safe_radius_factor": 0.18,
+    "map_gen_attempts": 12,
+    # шум Перлина (общие параметры fBm)
+    "noise_octaves": 4,
+    "noise_persistence": 0.5,
+    "noise_lacunarity": 2.0,
+    # озёра: рельеф и доля воды (оставляем только самый крупный водоём)
+    "water_noise_scale": 0.06,
+    "water_target_fraction": 0.2,
+    "water_reject_fraction": 0.3,
+    # влажность: где гуще цветы
+    "moisture_noise_scale": 0.07,
+    "flower_threshold": 0.5,
+    "flower_density": 0.5,
+    "tuft_density": 0.10,
+    # декор берега/воды
+    "lily_density": 0.07,
+    "reed_density": 0.35,
+    # наземные препятствия (только на траве)
+    "land_obstacle_count": 10,
+    "land_obstacles": [
         {"asset": "obstacles/dead_log_1.png", "size": (64, 32)},
         {"asset": "obstacles/dead_log_2.png", "size": (56, 32)},
         {"asset": "obstacles/dry_branch_1.png", "size": (48, 32)},
@@ -60,7 +79,6 @@ GAME_CONFIG = {
         {"asset": "obstacles/stones_1.png", "size": (48, 32)},
         {"asset": "obstacles/stump_1.png", "size": (36, 36)},
     ],
-    "map_obstacle_safe_radius_factor": 0.18,
     "waves": [
         {"count": 6, "interval": 90, "ranged_every": 0},
         {"count": 9, "interval": 80, "ranged_every": 4},
