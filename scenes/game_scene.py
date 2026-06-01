@@ -24,7 +24,7 @@ class GameScene:
         self.assets = AssetStore()
         self.font = make_font(14)
         self.hud_font = make_font(20)
-        self.balance_font = make_font(40)
+        self.balance_font = make_font(26)
         self.game_over_font = make_font(48)
         self.grass_tiles = [
             "tiles/grass_1.png",
@@ -355,13 +355,14 @@ class GameScene:
                 rect = (int(p[0]) - size // 2, int(p[1]) - size // 2, size, size)
                 pygame.draw.rect(surface, c, rect)
 
-    _BALANCE_POS = (20, 18)
-    _BALANCE_ICON = 36
+    _BALANCE_POS = (16, 14)
+    _BALANCE_ICON = 22
+    _BALANCE_PAD = 9
+    _BALANCE_H = 40
 
     def _balance_coin_center(self):
         x, y = self._BALANCE_POS
-        half = self._BALANCE_ICON // 2
-        return x + half, y + half
+        return x + self._BALANCE_PAD + self._BALANCE_ICON // 2, y + self._BALANCE_H // 2
 
     def _draw_coins(self, surface):
         r = COIN_CONFIG["size"]
@@ -423,23 +424,42 @@ class GameScene:
 
     def _draw_balance(self, surface):
         x, y = self._BALANCE_POS
-        size = self._BALANCE_ICON
-        r = size // 2
-        img = self.assets.optional_image("sprites/coin.png", (size, size))
-        if img is not None:
-            surface.blit(img, (x, y))
+        icon = self._BALANCE_ICON
+        pad = self._BALANCE_PAD
+        height = self._BALANCE_H
+        gap = 7
+
+        text_surf, text_rect = self.balance_font.render(
+            str(self.engine.balance), (244, 222, 150)
+        )
+        width = pad + icon + gap + text_rect.width + pad
+        panel = pygame.Rect(x, y, width, height)
+
+        pygame.draw.rect(surface, (44, 26, 14), panel, border_radius=9)
+        inner = panel.inflate(-4, -4)
+        pygame.draw.rect(surface, (96, 60, 33), inner, border_radius=7)
+        pygame.draw.rect(surface, (138, 92, 50), inner, width=2, border_radius=7)
+        pygame.draw.line(
+            surface,
+            (122, 80, 44),
+            (inner.left + 3, inner.top + 2),
+            (inner.right - 3, inner.top + 2),
+            1,
+        )
+
+        icon_x = x + pad
+        icon_y = y + (height - icon) // 2
+        coin = self.assets.optional_image("sprites/coin.png", (icon, icon))
+        if coin is not None:
+            surface.blit(coin, (icon_x, icon_y))
         else:
-            cx, cy = x + r, y + r
+            r = icon // 2
+            cx, cy = icon_x + r, icon_y + r
             pygame.draw.circle(surface, (120, 90, 10), (cx, cy), r)
             pygame.draw.circle(surface, COIN_CONFIG["color"], (cx, cy), r - 2)
-            pygame.draw.circle(
-                surface, (255, 240, 120), (cx - r // 3, cy - r // 3), r // 3
-            )
-        text_x = x + size + 10
-        text_surf, text_rect = self.balance_font.render(
-            str(self.engine.balance), (255, 240, 180)
-        )
-        surface.blit(text_surf, (text_x, y + r - text_rect.height // 2))
+
+        text_x = icon_x + icon + gap
+        surface.blit(text_surf, (text_x, y + (height - text_rect.height) // 2))
 
     def _draw_wave_button(self, surface):
         rect = self._wave_button_rect()
