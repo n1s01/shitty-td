@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pygame
 
-
 ASSET_ROOT = Path(__file__).resolve().parents[1] / "assets"
 TRANSPARENT_MATTE = (70, 124, 58, 0)
 

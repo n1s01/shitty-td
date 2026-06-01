@@ -1,4 +1,4 @@
-from pygame import _freetype  # type: ignore[attr-defined]
+from pygame import _freetype
 
 
 def make_font(size):
