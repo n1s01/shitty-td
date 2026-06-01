@@ -140,7 +140,6 @@ class Coin:
         self.x = x
         self.y = y
         self.value = value
-        self.lifetime = COIN_CONFIG["lifetime"]
         self.vx = vx
         self.vy = vy
         self.drop_timer = COIN_CONFIG["drop_frames"]
@@ -178,10 +177,8 @@ class Coin:
             self.scale = max(0.15, 1.0 - t * 0.85)
             if t >= 1.0:
                 self.pending_collect = True
-                self.lifetime = 0
             return
 
-        self.lifetime -= 1
         if self.drop_timer > 0:
             self.drop_timer -= 1
             self.x += self.vx
@@ -195,23 +192,6 @@ class Coin:
     @property
     def is_dropping(self):
         return self.drop_timer > 0
-
-    @property
-    def is_expired(self):
-        return self.lifetime <= 0
-
-    @property
-    def is_blinking(self):
-        return self.lifetime <= COIN_CONFIG["blink_start"]
-
-    @property
-    def visible(self):
-        if self.collecting:
-            return True
-        if not self.is_blinking:
-            return True
-        period = max(3, self.lifetime // 8)
-        return (self.lifetime // period) % 2 == 0
 
 
 class Projectile:

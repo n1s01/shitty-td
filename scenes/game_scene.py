@@ -1,13 +1,20 @@
 import math
-import random
 
 import pygame
 
 from config import COIN_CONFIG, COLORS, GAME_CONFIG
 from core.game_engine import GameEngine
+from core.map_generator import GRASS, SHORE, WATER
 from core.models import RangedEnemy
 from view.assets import AssetStore
 from view.fonts import make_font
+
+# запасные цвета, если PNG-тайл не найден
+BIOME_FALLBACK = {
+    WATER: (46, 116, 160),
+    SHORE: (196, 178, 128),
+    GRASS: (76, 128, 58),
+}
 
 
 class GameScene:
@@ -18,6 +25,7 @@ class GameScene:
         self.assets = AssetStore()
         self.font = make_font(14)
         self.hud_font = make_font(20)
+        self.balance_font = make_font(40)
         self.game_over_font = make_font(48)
         self.grass_tiles = [
             "tiles/grass_1.png",
@@ -25,11 +33,9 @@ class GameScene:
             "tiles/grass_3.png",
             "tiles/grass_4.png",
         ]
-        self.flower_decor = [
-            "decor/flowers_blue.png",
-            "decor/flowers_yellow.png",
-        ]
-        self._flower_positions = self._pick_flower_positions(random.randint(1, 10))
+        # вода рисуется одной непрерывной текстурой (строится лениво при первом кадре),
+        # а не повторяющимися тайлами — поэтому нет видимой «сетки»
+        self._water_surface = None
 
     def _wave_button_rect(self):
         img = self.assets.optional_image("ui/wave_button.png")
@@ -53,13 +59,6 @@ class GameScene:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             return "menu"
         return None
-
-    def _pick_flower_positions(self, count):
-        tile_w, tile_h = 32, 32
-        cols = self.width // tile_w
-        rows = self.height // tile_h
-        all_cells = [(c, r) for r in range(rows) for c in range(cols)]
-        return set(random.sample(all_cells, min(count, len(all_cells))))
 
     def update(self):
         self.engine.update()
@@ -93,46 +92,94 @@ class GameScene:
             self._draw_wave_button(surface)
 
     def _draw_background(self, surface):
-        grass_tiles = [
-            img
-            for img in (self.assets.optional_image(p) for p in self.grass_tiles)
-            if img is not None
-        ]
-        if not grass_tiles:
-            grass_tiles = [self.assets.optional_image("tiles/grass.png")]
-            grass_tiles = [g for g in grass_tiles if g is not None]
-        if not grass_tiles:
-            surface.fill(COLORS["bg"])
-            self._draw_tower_garden(surface)
-            return
+        ts = self.engine.tile_size
+        grass = [self.assets.optional_image(p) for p in self.grass_tiles]
+        grass = [g for g in grass if g is not None]
+        sand = self.assets.optional_image("tiles/sand.png")
 
-        tile_w, tile_h = grass_tiles[0].get_size()
-        for row, y in enumerate(range(0, self.height, tile_h)):
-            for col, x in enumerate(range(0, self.width, tile_w)):
-                index = _stable_noise(col, row, 5) % len(grass_tiles)
-                surface.blit(grass_tiles[index], (x, y))
+        # суша: трава и песок тайлами (повтор тут не мешает)
+        for row in range(self.engine.tile_rows):
+            for col in range(self.engine.tile_cols):
+                biome = self.engine.biome_map[row][col]
+                if biome == WATER:
+                    continue  # воду накладываем единой текстурой ниже
+                x, y = col * ts, row * ts
+                img = self._tile_image(biome, col, row, grass, sand)
+                if img is not None:
+                    surface.blit(img, (x, y))
+                else:
+                    pygame.draw.rect(surface, BIOME_FALLBACK[biome], (x, y, ts, ts))
 
-        self._draw_grass_decor(surface, tile_w, tile_h)
+        # вода — одна непрерывная текстура поверх (строится один раз)
+        if self._water_surface is None:
+            self._water_surface = self._build_water_surface()
+        surface.blit(self._water_surface, (0, 0))
+
+        self._draw_decor(surface)
         self._draw_tower_garden(surface)
 
-    def _draw_grass_decor(self, surface, tile_w, tile_h):
-        flower_images = [
-            img
-            for img in (self.assets.optional_image(path) for path in self.flower_decor)
-            if img is not None
-        ]
-        if not flower_images:
-            return
+    def _tile_image(self, biome, col, row, grass, sand):
+        if biome == SHORE:
+            return sand
+        if grass:
+            return grass[_stable_noise(col, row, 5) % len(grass)]
+        return None
 
-        for col, row in self._flower_positions:
-            x = col * tile_w
-            y = row * tile_h
-            img = flower_images[_stable_noise(col, row, 41) % len(flower_images)]
-            max_x = max(1, tile_w - img.get_width())
-            max_y = max(1, tile_h - img.get_height())
-            offset_x = _stable_noise(col, row, 23) % max_x
-            offset_y = _stable_noise(col, row, 31) % max_y
-            surface.blit(img, (x + offset_x, y + offset_y))
+    def _build_water_surface(self):
+        """
+        Непрерывная вода: рябь сэмплируется шумом Перлина по ГЛОБАЛЬНЫМ
+        координатам пикселя, поэтому рисунок течёт через границы тайлов без
+        повторов. Красится только под водными тайлами, остальное прозрачно.
+        Считается один раз при старте — дальше просто блитится.
+        """
+        from core.perlin_noise import PerlinNoise
+
+        surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        flow = PerlinNoise()  # крупная медленная рябь (глубже/мельче)
+        detail = PerlinNoise()  # мелкий блеск на гребнях
+        ts = self.engine.tile_size
+
+        deep = (30, 92, 138, 255)
+        mid = (44, 118, 165, 255)
+        light = (74, 152, 194, 255)
+        shine = (140, 200, 222, 255)
+
+        flow_scale = 0.05
+        detail_scale = 0.14
+        step = 8  # крупные пиксель-блоки 8×8 — чёткий пиксель-арт, не «акварель»
+
+        for row in range(self.engine.tile_rows):
+            for col in range(self.engine.tile_cols):
+                if self.engine.biome_map[row][col] != WATER:
+                    continue
+                x0, y0 = col * ts, row * ts
+                for y in range(y0, y0 + ts, step):
+                    for x in range(x0, x0 + ts, step):
+                        # сэмплируем шум в ЦЕНТРЕ блока -> весь блок одного цвета
+                        sx, sy = x + step / 2, y + step / 2
+                        v = flow.fractal_noise2d(
+                            sx * flow_scale, sy * flow_scale, octaves=2
+                        )
+                        d = detail.noise2d(sx * detail_scale, sy * detail_scale)
+                        val = v + 0.35 * d
+                        if val > 0.55:
+                            c = shine
+                        elif val > 0.18:
+                            c = light
+                        elif val > -0.3:
+                            c = mid
+                        else:
+                            c = deep
+                        surf.fill(c, (x, y, step, step))
+        return surf
+
+    def _draw_decor(self, surface):
+        for item in self.engine.decor:
+            img = self.assets.optional_image(item["asset"])
+            if img is None:
+                continue
+            rect = img.get_rect(center=(int(item["x"]), int(item["y"])))
+            surface.blit(img, rect)
 
     def _draw_tower_garden(self, surface):
         tower = self.engine.tower
@@ -302,17 +349,20 @@ class GameScene:
                 end_y = int(proj.y - proj.vy * tail_length)
                 pygame.draw.line(surface, fallback_color, (cx, cy), (end_x, end_y), 2)
 
+    # крупный HUD баланса в левом верхнем углу
+    _BALANCE_POS = (20, 18)
+    _BALANCE_ICON = 36
+
     def _balance_coin_center(self):
-        r = COIN_CONFIG["size"]
-        return 16 + r, 16 + r
+        x, y = self._BALANCE_POS
+        half = self._BALANCE_ICON // 2
+        return x + half, y + half
 
     def _draw_coins(self, surface):
         r = COIN_CONFIG["size"]
         color = COIN_CONFIG["color"]
         img_base = self.assets.optional_image("sprites/coin.png", (r * 2, r * 2))
         for coin in self.engine.coins:
-            if not coin.visible:
-                continue
             cx, cy = int(coin.x), int(coin.y)
 
             if coin.collecting:
@@ -367,12 +417,12 @@ class GameScene:
             pygame.draw.ellipse(surface, (255, 248, 160), hi)
 
     def _draw_balance(self, surface):
-        r = COIN_CONFIG["size"]
-        img = self.assets.optional_image("sprites/coin.png", (r * 2, r * 2))
-        x, y = 16, 16
+        x, y = self._BALANCE_POS
+        size = self._BALANCE_ICON
+        r = size // 2
+        img = self.assets.optional_image("sprites/coin.png", (size, size))
         if img is not None:
             surface.blit(img, (x, y))
-            text_x = x + r * 2 + 6
         else:
             cx, cy = x + r, y + r
             pygame.draw.circle(surface, (120, 90, 10), (cx, cy), r)
@@ -380,8 +430,8 @@ class GameScene:
             pygame.draw.circle(
                 surface, (255, 240, 120), (cx - r // 3, cy - r // 3), r // 3
             )
-            text_x = x + r * 2 + 6
-        text_surf, text_rect = self.hud_font.render(
+        text_x = x + size + 10
+        text_surf, text_rect = self.balance_font.render(
             str(self.engine.balance), (255, 240, 180)
         )
         surface.blit(text_surf, (text_x, y + r - text_rect.height // 2))

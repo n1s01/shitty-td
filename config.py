@@ -92,8 +92,6 @@ GAME_CONFIG = {
 }
 
 COIN_CONFIG = {
-    "lifetime": 600,
-    "blink_start": 300,
     "size": 6,
     "collect_hitbox": 28,
     "color": (255, 215, 0),

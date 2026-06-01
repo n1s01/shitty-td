@@ -3,7 +3,8 @@ import random
 
 from config import GAME_CONFIG
 from core.grid import Grid
-from core.models import Coin, Enemy, Obstacle, Projectile, RangedEnemy, Tower
+from core.map_generator import WATER, MapGenerator
+from core.models import Coin, Enemy, Projectile, RangedEnemy, Tower
 from core.pathfinding import find_path, smooth_path
 
 
@@ -23,11 +24,17 @@ class GameEngine:
         self.enemy_projectiles = []
         self.coins = []
         self.balance = 0
-        self.obstacles = []
         self.grid = Grid(
             width, height, GAME_CONFIG["grid_cols"], GAME_CONFIG["grid_rows"]
         )
-        self._generate_obstacles()
+        generated = MapGenerator(width, height, self.tower.x, self.tower.y).generate()
+        self.biome_map = generated.biomes
+        self.tile_cols = generated.cols
+        self.tile_rows = generated.rows
+        self.tile_size = generated.tile_size
+        self.decor = generated.decor
+        self.obstacles = generated.obstacles
+        self._mark_map_on_grid()
         self.spawn_timer = 0
         self.spawned_this_wave = 0
         self.wave_index = 0
@@ -146,45 +153,18 @@ class GameEngine:
         self._assign_path(enemy)
         self.enemies.append(enemy)
 
-    def _generate_obstacles(self):
-        specs = GAME_CONFIG["map_obstacles"]
-        target_count = GAME_CONFIG["map_obstacle_count"]
-        attempts = 0
-        safe_radius = (
-            max(self.width, self.height)
-            * GAME_CONFIG["map_obstacle_safe_radius_factor"]
-        )
+    def _mark_map_on_grid(self):
+        """Вода и наземные препятствия делают клетки grid непроходимыми для A*."""
+        ts = self.tile_size
+        for row in range(self.tile_rows):
+            for col in range(self.tile_cols):
+                if self.biome_map[row][col] == WATER:
+                    self._mark_world_rect(col * ts, row * ts, ts, ts)
+        for obstacle in self.obstacles:
+            x, y, width, height = obstacle.rect
+            self._mark_world_rect(x, y, width, height)
 
-        while len(self.obstacles) < target_count and attempts < target_count * 20:
-            attempts += 1
-            spec = random.choice(specs)
-            width, height = spec["size"]
-            x = random.uniform(width, self.width - width)
-            y = random.uniform(height, self.height - height)
-
-            if math.hypot(x - self.tower.x, y - self.tower.y) < safe_radius:
-                continue
-
-            obstacle = Obstacle(
-                x=x, y=y, width=width, height=height, asset=spec["asset"]
-            )
-            if self._overlaps_existing_obstacle(obstacle):
-                continue
-
-            self.obstacles.append(obstacle)
-            self._mark_obstacle_on_grid(obstacle)
-
-    def _overlaps_existing_obstacle(self, obstacle):
-        ox, oy, ow, oh = obstacle.rect
-        padded = (ox - 18, oy - 18, ow + 36, oh + 36)
-        for other in self.obstacles:
-            rx, ry, rw, rh = other.rect
-            if _rects_overlap(padded, (rx, ry, rw, rh)):
-                return True
-        return False
-
-    def _mark_obstacle_on_grid(self, obstacle):
-        x, y, width, height = obstacle.rect
+    def _mark_world_rect(self, x, y, width, height):
         left, top = self.grid.world_to_grid(x, y)
         right, bottom = self.grid.world_to_grid(x + width, y + height)
         for row in range(top, bottom + 1):
@@ -287,7 +267,7 @@ class GameEngine:
             coin.update()
             if coin.pending_collect:
                 self.balance += coin.value
-            elif not coin.is_expired:
+            else:
                 alive.append(coin)
         self.coins = alive
 
@@ -310,12 +290,6 @@ class GameEngine:
 
     def _is_out_of_bounds(self, proj):
         return proj.x < 0 or proj.x > self.width or proj.y < 0 or proj.y > self.height
-
-
-def _rects_overlap(a, b):
-    ax, ay, aw, ah = a
-    bx, by, bw, bh = b
-    return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
 
 
 def _circle_touches_rect(cx, cy, radius, rect):
