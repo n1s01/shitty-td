@@ -1,15 +1,49 @@
 import math
+import random
 
 from config import COIN_CONFIG, GAME_CONFIG
 
 
+class ShatterEffect:
+    DURATION = 22
+
+    def __init__(self, x, y, color, count=9):
+        self.color = color
+        self.timer = 0
+
+        self.particles = []
+        for _ in range(count):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(1.2, 3.6)
+            self.particles.append(
+                [x, y, math.cos(angle) * speed, math.sin(angle) * speed]
+            )
+
+    def update(self):
+        self.timer += 1
+        for p in self.particles:
+            p[0] += p[2]
+            p[1] += p[3]
+            p[2] *= 0.86
+            p[3] *= 0.86
+
+    @property
+    def progress(self):
+        return min(1.0, self.timer / self.DURATION)
+
+    @property
+    def is_done(self):
+        return self.timer >= self.DURATION
+
+
 class Obstacle:
-    def __init__(self, x, y, width, height, asset):
+    def __init__(self, x, y, width, height, asset, solid=True):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.asset = asset
+        self.solid = solid
 
     @property
     def rect(self):

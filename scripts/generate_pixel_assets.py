@@ -31,18 +31,17 @@ def outline_rect(surf, color, rect, width=1):
     pygame.draw.rect(surf, color, rect, width)
 
 
-# Палитра травы: от тёмной (в тени) до светлой (на солнце)
 GRASS_SHADES = [
-    (60, 108, 46),  # 0 — самая тёмная, ложбинки
-    (68, 118, 52),  # 1
-    (76, 128, 58),  # 2 — основной средний тон
-    (84, 138, 64),  # 3
-    (94, 150, 72),  # 4 — светлые проплешины на солнце
+    (60, 108, 46),
+    (68, 118, 52),
+    (76, 128, 58),
+    (84, 138, 64),
+    (94, 150, 72),
 ]
 
 
 def _hash(x, y, seed):
-    """Детерминированный шум — чтобы текстура воспроизводилась при перегенерации."""
+
     h = (x * 374761393 + y * 668265263 + seed * 2654435761) & 0xFFFFFFFF
     h ^= h >> 15
     h = (h * 2246822519) & 0xFFFFFFFF
@@ -51,7 +50,7 @@ def _hash(x, y, seed):
 
 
 def _shade_index(value):
-    """Распределяем 0..99 по оттенкам так, чтобы средний тон преобладал."""
+
     if value < 8:
         return 0
     if value < 30:
@@ -64,16 +63,15 @@ def _shade_index(value):
 
 
 def _grass_base(img, seed):
-    """Мягкая пятнистая основа: крупные клочки + мелкая зернистость."""
+
     w, h = img.get_size()
     for by in range(0, h, 2):
         for bx in range(0, w, 2):
-            coarse = _hash(bx // 8, by // 8, seed) % 100  # крупные пятна
-            fine = _hash(bx, by, seed + 7) % 100  # мелкая зернистость
+            coarse = _hash(bx // 8, by // 8, seed) % 100
+            fine = _hash(bx, by, seed + 7) % 100
             value = (coarse * 7 + fine * 3) // 10
             px(img, GRASS_SHADES[_shade_index(value)], (bx, by, 2, 2))
 
-    # редкие точечные блики и тёмные крапинки для живости
     for n in range(10):
         hx = _hash(n, seed, 101) % w
         hy = _hash(n, seed, 202) % h
@@ -101,7 +99,7 @@ def _blade(img, x, base_y, height, lean=0):
         else:
             c = mid
         px(img, c, (bx, y, 1, 1))
-        # тонкая тень у основания слева — объём
+
         if 0 < h < height - 1 and bx - 1 >= 0:
             px(img, base_c, (bx - 1, y, 1, 1))
 
@@ -110,10 +108,7 @@ def make_grass(variant=0):
     img = surface((32, 32))
     _grass_base(img, seed=variant + 1)
 
-    # лезвия распределены по всей высоте тайла, чтобы при замостке
-    # не появлялись горизонтальные полосы
     if variant == 0:
-        # прямые лезвия средней высоты
         for x, y, h in [
             (5, 12, 5),
             (11, 8, 4),
@@ -130,7 +125,6 @@ def make_grass(variant=0):
         ]:
             _blade(img, x, y, h)
     elif variant == 1:
-        # лезвия наклонены вправо — ветер
         for x, y, h in [
             (4, 26, 5),
             (10, 9, 5),
@@ -146,7 +140,6 @@ def make_grass(variant=0):
         ]:
             _blade(img, x, y, h, lean=1)
     elif variant == 2:
-        # короткая густая трава
         for x, y, h in [
             (3, 27, 3),
             (7, 12, 3),
@@ -165,7 +158,6 @@ def make_grass(variant=0):
         ]:
             _blade(img, x, y, h)
     else:
-        # высокая трава, некоторые лезвия наклонены
         for x, y, h, lean in [
             (5, 12, 7, 0),
             (9, 25, 6, 1),
@@ -218,7 +210,7 @@ def make_clover():
 def make_flowers(color):
     img = surface((18, 18))
     stem = (48, 109, 48)
-    center = (242, 240, 250)  # светлая серединка — не путать с монетой
+    center = (242, 240, 250)
     for base_x, base_y in [(5, 12), (12, 14), (9, 9)]:
         px(img, stem, (base_x, base_y - 4, 1, 5))
         px(img, color, (base_x - 1, base_y - 6, 3, 3))
@@ -324,22 +316,22 @@ def make_enemy_ranged():
 def make_wave_button():
     w, h = 120, 36
     img = surface((w, h))
-    # основа — тёмное дерево
+
     img.fill((88, 52, 28))
-    # светлая середина доски
+
     px(img, (118, 72, 39), (3, 3, w - 6, h - 6))
-    # горизонтальные прожилки дерева
+
     for y in (8, 14, 20, 26):
         px(img, (104, 63, 34), (5, y, w - 10, 1))
         px(img, (132, 84, 46), (5, y + 1, w - 10, 1))
-    # вертикальные гвоздики по краям
+
     for nail_x in (10, w - 11):
         px(img, (62, 38, 24), (nail_x, 8, 5, 20))
         px(img, (148, 102, 58), (nail_x + 1, 9, 3, 18))
         px(img, (198, 158, 88), (nail_x + 1, 9, 2, 2))
-    # тёмная рамка
+
     outline_rect(img, (52, 29, 14), (0, 0, w, h), 2)
-    # внутренняя светлая рамка — объём
+
     outline_rect(img, (148, 98, 54), (3, 3, w - 6, h - 6), 1)
     return img
 
@@ -408,24 +400,6 @@ def make_tower_keeper(frame=0):
     return img
 
 
-def make_pond(w, h, variant):
-    img = surface((w, h))
-    color_sets = [
-        ((37, 111, 135), (54, 151, 162), (125, 205, 196)),
-        ((34, 89, 130), (45, 135, 166), (116, 190, 207)),
-    ]
-    dark, mid, light = color_sets[variant % len(color_sets)]
-    px(img, dark, (9, 10, w - 18, h - 18))
-    px(img, dark, (15, 5, w - 30, h - 8))
-    px(img, mid, (14, 13, w - 28, h - 24))
-    px(img, mid, (22, 8, w - 36, h - 16))
-    px(img, light, (22, 14, 12, 3))
-    px(img, light, (w - 30, h - 18, 9, 2))
-    for rect in [(5, 22, 5, 4), (w - 13, 17, 5, 4), (18, h - 8, 7, 3)]:
-        px(img, (61, 103, 48), rect)
-    return img
-
-
 def make_log(w, h, variant):
     img = surface((w, h))
     base = (103, 62, 35) if variant == 0 else (124, 78, 43)
@@ -456,7 +430,7 @@ def make_branch(w, h, variant):
 
 
 def make_sand():
-    """Песчаный берег между травой и водой."""
+
     img = surface((32, 32))
     img.fill((196, 178, 128))
     for by in range(0, 32, 2):
@@ -469,7 +443,7 @@ def make_sand():
             else:
                 c = (196, 178, 128)
             px(img, c, (bx, by, 2, 2))
-    # влажные тёмные крапинки и редкая галька у кромки
+
     for rect in [
         (6, 8, 2, 2),
         (20, 5, 2, 2),
@@ -490,10 +464,10 @@ def make_lily_pad(variant):
         px(img, main, rect)
     px(img, dark, (2, 9, 10, 2))
     px(img, light, (5, 4, 3, 2))
-    # клиновидный вырез листа (тёмная вода)
+
     px(img, dark, (7, 7, 4, 1))
     px(img, dark, (8, 6, 3, 1))
-    if variant:  # цветок кувшинки
+    if variant:
         px(img, (242, 226, 188), (6, 6, 2, 2))
         px(img, (240, 134, 160), (5, 5, 1, 1))
         px(img, (240, 134, 160), (8, 8, 1, 1))
@@ -508,7 +482,7 @@ def make_reeds(variant):
     cat_light = (150, 98, 54)
     for x, h, c in [(3, 16, stalk), (6, 19, stalk_dark), (9, 14, stalk)]:
         px(img, c, (x, 20 - h, 2, h))
-    # початки рогоза
+
     px(img, cat, (5, 3, 3, 6))
     px(img, cat_light, (6, 4, 1, 4))
     if variant:
@@ -552,6 +526,31 @@ def make_stump():
     return img
 
 
+def make_bush(w, h, variant):
+    img = surface((w, h))
+    shadow = (34, 70, 40)
+    dark = (42, 96, 50)
+    mid = (60, 128, 64)
+    light = (98, 168, 86)
+    px(img, shadow, (5, h - 8, w - 10, 6))
+    blobs = [
+        (6, 12, 16, 16),
+        (w - 24, 10, 18, 16),
+        (w // 2 - 10, 6, 20, 16),
+        (3, 16, 14, 12),
+        (w - 17, 16, 14, 12),
+    ]
+    for bx, by, bw, bh in blobs:
+        px(img, mid, (bx, by, bw, bh))
+    px(img, dark, (7, h - 12, w - 14, 7))
+    for hx, hy in [(11, 12), (w - 18, 11), (w // 2 - 4, 9), (16, 18)]:
+        px(img, light, (hx, hy, 4, 3))
+    if variant:
+        for bx, by in [(12, 20), (w - 16, 18), (w // 2, 22)]:
+            px(img, (206, 78, 96), (bx, by, 2, 2))
+    return img
+
+
 def main():
     pygame.init()
     assets = {
@@ -582,14 +581,14 @@ def main():
         "sprites/enemy_ranged.png": make_enemy_ranged(),
         "sprites/projectile_arrow.png": make_arrow(),
         "sprites/projectile_firebolt.png": make_firebolt(),
-        "obstacles/pond_1.png": make_pond(64, 48, 0),
-        "obstacles/pond_2.png": make_pond(72, 48, 1),
         "obstacles/dead_log_1.png": make_log(64, 32, 0),
         "obstacles/dead_log_2.png": make_log(56, 32, 1),
         "obstacles/dry_branch_1.png": make_branch(48, 32, 0),
         "obstacles/dry_branch_2.png": make_branch(56, 32, 1),
         "obstacles/stones_1.png": make_stones(),
         "obstacles/stump_1.png": make_stump(),
+        "obstacles/bush_1.png": make_bush(40, 36, 0),
+        "obstacles/bush_2.png": make_bush(44, 38, 1),
         "ui/wave_button.png": make_wave_button(),
     }
     for rel_path, img in assets.items():

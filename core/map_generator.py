@@ -5,46 +5,22 @@ from config import GAME_CONFIG
 from core.models import Obstacle
 from core.perlin_noise import PerlinNoise
 
-# Типы биомов тайла
 GRASS = 0
 WATER = 1
 SHORE = 2
 
 
 class GeneratedMap:
-    """Результат генерации — то, что нужно движку и рендеру."""
-
     def __init__(self, cols, rows, tile_size, biomes, decor, obstacles):
         self.cols = cols
         self.rows = rows
         self.tile_size = tile_size
-        self.biomes = biomes  # biomes[row][col] -> GRASS / WATER / SHORE
-        self.decor = decor  # [{"asset", "x", "y"}] в мировых координатах
-        self.obstacles = obstacles  # список Obstacle (брёвна, камни, пни)
+        self.biomes = biomes
+        self.decor = decor
+        self.obstacles = obstacles
 
 
 class MapGenerator:
-    """
-    Процедурная генерация биомов на основе шума Перлина.
-
-    Используются ДВА независимых поля шума:
-      - water_field    — рельеф: низины (малые значения) заливаются водой,
-                         образуя органичные озёра вместо одиночных спрайтов;
-      - moisture_field — «плодородность»: где гуще растут цветы и кустики травы.
-
-    Конвейер генерации:
-      1. Сэмплируем water_field для каждого тайла. Порог берём ПЕРЦЕНТИЛЕМ —
-         так доля воды стабильна при любом сиде (target_fraction).
-      2. flood-fill связности: заливаем сушу от башни. Всё, до чего вода не
-         дала добраться (острова, отрезанные половины), само становится водой.
-         Если «утопило» слишком много — перегенерируем с другим сидом.
-      3. Морфология берега: каждый GRASS-тайл, граничащий с водой, становится
-         SHORE — плавный переход вода→суша без autotiling.
-      4. Декор по биомам: кувшинки на воде, камыш/галька на берегу,
-         цветы и кустики на траве с плотностью по moisture_field.
-      5. Наземные препятствия (брёвна/камни/пни) только на траве.
-    """
-
     def __init__(self, width, height, tower_x, tower_y):
         self.width = width
         self.height = height
@@ -58,11 +34,7 @@ class MapGenerator:
             max(width, height) * GAME_CONFIG["map_obstacle_safe_radius_factor"]
         )
 
-        # один общий случайный базовый сид на эту генерацию,
-        # ретраи берут base_seed + attempt
         self._base_seed = random.randint(0, 2**31 - 1)
-
-    # ---- публичный вход ----
 
     def generate(self):
         attempts = GAME_CONFIG["map_gen_attempts"]
@@ -77,7 +49,7 @@ class MapGenerator:
             fraction = self._water_fraction(biomes)
             best = (biomes, seed)
             if fraction <= reject:
-                break  # карта связная и воды не слишком много
+                break
 
         biomes, seed = best
         self._derive_shore(biomes)
@@ -88,8 +60,6 @@ class MapGenerator:
             self.cols, self.rows, self.tile_size, biomes, decor, obstacles
         )
 
-    # ---- шаг 1: вода через перцентильный порог ----
-
     def _build_water(self, seed):
         noise = PerlinNoise(seed)
         scale = GAME_CONFIG["water_noise_scale"]
@@ -98,7 +68,7 @@ class MapGenerator:
         lacunarity = GAME_CONFIG["noise_lacunarity"]
 
         values = [[0.0] * self.cols for _ in range(self.rows)]
-        candidates = []  # значения тайлов вне защитной зоны — для перцентиля
+        candidates = []
         for row in range(self.rows):
             for col in range(self.cols):
                 v = noise.fractal_noise2d(
@@ -108,7 +78,6 @@ class MapGenerator:
                 if not self._is_safe_tile(col, row):
                     candidates.append(v)
 
-        # порог = значение на target_fraction-перцентиле -> стабильная доля воды
         candidates.sort()
         target = GAME_CONFIG["water_target_fraction"]
         idx = min(len(candidates) - 1, int(len(candidates) * target))
@@ -118,21 +87,15 @@ class MapGenerator:
         for row in range(self.rows):
             for col in range(self.cols):
                 if self._is_border_tile(col, row):
-                    continue  # кромка карты всегда суша — туда заходят враги
+                    continue
                 if self._is_safe_tile(col, row):
-                    continue  # вокруг башни всегда суша
+                    continue
                 if values[row][col] <= threshold:
                     biomes[row][col] = WATER
         return biomes
 
-    # ---- шаг 2: связность через flood-fill ----
-
     def _enforce_connectivity(self, biomes):
-        """
-        Заливаем сушу от тайла башни (4-связность). Любой не-водный тайл,
-        до которого не дошли, отрезан озером -> топим его. Так гарантируем,
-        что вся суша — одна связная область, и любой враг дойдёт до башни.
-        """
+
         tcol, trow = self._tower_tile()
         reachable = [[False] * self.cols for _ in range(self.rows)]
         stack = [(tcol, trow)]
@@ -149,10 +112,10 @@ class MapGenerator:
         for row in range(self.rows):
             for col in range(self.cols):
                 if biomes[row][col] != WATER and not reachable[row][col]:
-                    biomes[row][col] = WATER  # отрезанный кусок -> вода
+                    biomes[row][col] = WATER
 
     def _keep_largest_lake(self, biomes):
-        """Оставляем только самый крупный водоём, остальные осушаем в траву."""
+
         seen = [[False] * self.cols for _ in range(self.rows)]
         components = []
         for row in range(self.rows):
@@ -187,8 +150,6 @@ class MapGenerator:
         water = sum(row.count(WATER) for row in biomes)
         return water / total if total else 0.0
 
-    # ---- шаг 3: берег ----
-
     def _derive_shore(self, biomes):
         shore = []
         for row in range(self.rows):
@@ -211,13 +172,10 @@ class MapGenerator:
                         return True
         return False
 
-    # ---- шаг 4: декор ----
-
     def _place_decor(self, biomes, seed, rng):
         decor = []
         ts = self.tile_size
 
-        # поле влажности нормируем в [0,1] для порога цветов
         moist = PerlinNoise(seed + 9999)
         mscale = GAME_CONFIG["moisture_noise_scale"]
         mvals = [
@@ -266,9 +224,9 @@ class MapGenerator:
                         decor.append(
                             self._decor_item("decor/pebbles.png", cx, cy, rng, ts)
                         )
-                else:  # GRASS
+                else:
                     if self._is_safe_world(cx, cy):
-                        continue  # под огородом башни декор не нужен
+                        continue
                     moisture = (mvals[row][col] - lo) / span
                     if moisture > flower_threshold and rng.random() < flower_density:
                         decor.append(
@@ -288,8 +246,6 @@ class MapGenerator:
             "y": cy + rng.uniform(-jitter, jitter),
         }
 
-    # ---- шаг 5: наземные препятствия ----
-
     def _place_obstacles(self, biomes, rng):
         specs = GAME_CONFIG["land_obstacles"]
         target = GAME_CONFIG["land_obstacle_count"]
@@ -304,8 +260,15 @@ class MapGenerator:
             if self._is_safe_world(x, y):
                 continue
             if self._biome_at(biomes, x, y) != GRASS:
-                continue  # брёвна/камни только на траве, не в воде/на берегу
-            obstacle = Obstacle(x=x, y=y, width=w, height=h, asset=spec["asset"])
+                continue
+            obstacle = Obstacle(
+                x=x,
+                y=y,
+                width=w,
+                height=h,
+                asset=spec["asset"],
+                solid=spec.get("solid", True),
+            )
             if self._overlaps(obstacle, obstacles):
                 continue
             obstacles.append(obstacle)
@@ -318,8 +281,6 @@ class MapGenerator:
             if _rects_overlap(padded, other.rect):
                 return True
         return False
-
-    # ---- вспомогательное ----
 
     def _biome_at(self, biomes, x, y):
         col = int(x / self.tile_size)

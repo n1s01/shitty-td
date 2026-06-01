@@ -9,7 +9,6 @@ from core.models import RangedEnemy
 from view.assets import AssetStore
 from view.fonts import make_font
 
-# запасные цвета, если PNG-тайл не найден
 BIOME_FALLBACK = {
     WATER: (46, 116, 160),
     SHORE: (196, 178, 128),
@@ -33,8 +32,7 @@ class GameScene:
             "tiles/grass_3.png",
             "tiles/grass_4.png",
         ]
-        # вода рисуется одной непрерывной текстурой (строится лениво при первом кадре),
-        # а не повторяющимися тайлами — поэтому нет видимой «сетки»
+
         self._water_surface = None
 
     def _wave_button_rect(self):
@@ -82,6 +80,7 @@ class GameScene:
             COLORS["enemy_projectile_fill"],
             10,
         )
+        self._draw_effects(surface)
         self._draw_coins(surface)
         self._draw_balance(surface)
         if self.engine.is_victory:
@@ -97,12 +96,11 @@ class GameScene:
         grass = [g for g in grass if g is not None]
         sand = self.assets.optional_image("tiles/sand.png")
 
-        # суша: трава и песок тайлами (повтор тут не мешает)
         for row in range(self.engine.tile_rows):
             for col in range(self.engine.tile_cols):
                 biome = self.engine.biome_map[row][col]
                 if biome == WATER:
-                    continue  # воду накладываем единой текстурой ниже
+                    continue
                 x, y = col * ts, row * ts
                 img = self._tile_image(biome, col, row, grass, sand)
                 if img is not None:
@@ -110,7 +108,6 @@ class GameScene:
                 else:
                     pygame.draw.rect(surface, BIOME_FALLBACK[biome], (x, y, ts, ts))
 
-        # вода — одна непрерывная текстура поверх (строится один раз)
         if self._water_surface is None:
             self._water_surface = self._build_water_surface()
         surface.blit(self._water_surface, (0, 0))
@@ -126,17 +123,12 @@ class GameScene:
         return None
 
     def _build_water_surface(self):
-        """
-        Непрерывная вода: рябь сэмплируется шумом Перлина по ГЛОБАЛЬНЫМ
-        координатам пикселя, поэтому рисунок течёт через границы тайлов без
-        повторов. Красится только под водными тайлами, остальное прозрачно.
-        Считается один раз при старте — дальше просто блитится.
-        """
+
         from core.perlin_noise import PerlinNoise
 
         surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        flow = PerlinNoise()  # крупная медленная рябь (глубже/мельче)
-        detail = PerlinNoise()  # мелкий блеск на гребнях
+        flow = PerlinNoise()
+        detail = PerlinNoise()
         ts = self.engine.tile_size
 
         deep = (30, 92, 138, 255)
@@ -146,7 +138,7 @@ class GameScene:
 
         flow_scale = 0.05
         detail_scale = 0.14
-        step = 8  # крупные пиксель-блоки 8×8 — чёткий пиксель-арт, не «акварель»
+        step = 8
 
         for row in range(self.engine.tile_rows):
             for col in range(self.engine.tile_cols):
@@ -155,7 +147,6 @@ class GameScene:
                 x0, y0 = col * ts, row * ts
                 for y in range(y0, y0 + ts, step):
                     for x in range(x0, x0 + ts, step):
-                        # сэмплируем шум в ЦЕНТРЕ блока -> весь блок одного цвета
                         sx, sy = x + step / 2, y + step / 2
                         v = flow.fractal_noise2d(
                             sx * flow_scale, sy * flow_scale, octaves=2
@@ -349,7 +340,21 @@ class GameScene:
                 end_y = int(proj.y - proj.vy * tail_length)
                 pygame.draw.line(surface, fallback_color, (cx, cy), (end_x, end_y), 2)
 
-    # крупный HUD баланса в левом верхнем углу
+    def _draw_effects(self, surface):
+        for effect in self.engine.effects:
+            fade = 1.0 - effect.progress
+            size = max(1, int(4 * fade) + 1)
+            base = effect.color
+
+            c = (
+                int(base[0] * fade + 24),
+                int(base[1] * fade + 18),
+                int(base[2] * fade + 12),
+            )
+            for p in effect.particles:
+                rect = (int(p[0]) - size // 2, int(p[1]) - size // 2, size, size)
+                pygame.draw.rect(surface, c, rect)
+
     _BALANCE_POS = (20, 18)
     _BALANCE_ICON = 36
 
@@ -453,7 +458,6 @@ class GameScene:
             surface.blit(overlay, rect)
             pygame.draw.rect(surface, (148, 98, 54), rect, 2)
 
-        # прогресс-заливка поверх текстуры
         fill_w = int(rect.width * progress)
         if fill_w > 0:
             fill = pygame.Surface((fill_w, rect.height), pygame.SRCALPHA)

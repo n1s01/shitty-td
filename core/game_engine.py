@@ -4,7 +4,7 @@ import random
 from config import GAME_CONFIG
 from core.grid import Grid
 from core.map_generator import WATER, MapGenerator
-from core.models import Coin, Enemy, Projectile, RangedEnemy, Tower
+from core.models import Coin, Enemy, Projectile, RangedEnemy, ShatterEffect, Tower
 from core.pathfinding import find_path, smooth_path
 
 
@@ -23,6 +23,7 @@ class GameEngine:
         self.projectiles = []
         self.enemy_projectiles = []
         self.coins = []
+        self.effects = []
         self.balance = 0
         self.grid = Grid(
             width, height, GAME_CONFIG["grid_cols"], GAME_CONFIG["grid_rows"]
@@ -53,6 +54,7 @@ class GameEngine:
         self._update_projectiles()
         self._update_enemy_projectiles()
         self._update_coins()
+        self._update_effects()
 
     def shoot_at(self, target_x, target_y):
         dx = target_x - self.tower.x
@@ -154,13 +156,15 @@ class GameEngine:
         self.enemies.append(enemy)
 
     def _mark_map_on_grid(self):
-        """Вода и наземные препятствия делают клетки grid непроходимыми для A*."""
+
         ts = self.tile_size
         for row in range(self.tile_rows):
             for col in range(self.tile_cols):
                 if self.biome_map[row][col] == WATER:
                     self._mark_world_rect(col * ts, row * ts, ts, ts)
         for obstacle in self.obstacles:
+            if not obstacle.solid:
+                continue
             x, y, width, height = obstacle.rect
             self._mark_world_rect(x, y, width, height)
 
@@ -180,7 +184,7 @@ class GameEngine:
             enemy.path = [self.grid.grid_to_world(c, r) for c, r in grid_path]
 
     def _update_enemies(self):
-        for enemy in self.enemies[:]:  # copy list with enemies in mem
+        for enemy in self.enemies[:]:
             enemy.move_towards(self.tower.x, self.tower.y)
 
             if isinstance(enemy, RangedEnemy):
@@ -231,8 +235,31 @@ class GameEngine:
             proj.update()
             if self._check_projectile_hits(proj, proj_size):
                 continue
+            if self._hits_obstacle(proj):
+                self.effects.append(
+                    ShatterEffect(proj.x, proj.y, GAME_CONFIG["shatter_color"])
+                )
+                self.projectiles.remove(proj)
+                continue
             if self._is_out_of_bounds(proj):
                 self.projectiles.remove(proj)
+
+    def _hits_obstacle(self, proj):
+        for obstacle in self.obstacles:
+            if not obstacle.solid:
+                continue
+            ox, oy, ow, oh = obstacle.rect
+            inset = 4
+            if ox + inset <= proj.x <= ox + ow - inset:
+                if oy + inset <= proj.y <= oy + oh - inset:
+                    return True
+        return False
+
+    def _update_effects(self):
+        for effect in self.effects[:]:
+            effect.update()
+            if effect.is_done:
+                self.effects.remove(effect)
 
     def _check_projectile_hits(self, proj, proj_size):
         for enemy in self.enemies[:]:
