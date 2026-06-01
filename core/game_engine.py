@@ -3,7 +3,7 @@ import random
 
 from config import GAME_CONFIG
 from core.grid import Grid
-from core.models import Enemy, Obstacle, Projectile, RangedEnemy, Tower
+from core.models import Coin, Enemy, Obstacle, Projectile, RangedEnemy, Tower
 from core.pathfinding import find_path, smooth_path
 
 
@@ -21,6 +21,8 @@ class GameEngine:
         self.enemies = []
         self.projectiles = []
         self.enemy_projectiles = []
+        self.coins = []
+        self.balance = 0
         self.obstacles = []
         self.grid = Grid(
             width, height, GAME_CONFIG["grid_cols"], GAME_CONFIG["grid_rows"]
@@ -43,6 +45,7 @@ class GameEngine:
         self._update_enemies()
         self._update_projectiles()
         self._update_enemy_projectiles()
+        self._update_coins()
 
     def shoot_at(self, target_x, target_y):
         dx = target_x - self.tower.x
@@ -261,9 +264,49 @@ class GameEngine:
                 enemy.hit_flash_time = GAME_CONFIG["hit_flash_frames"]
                 if enemy.is_dead:
                     self.enemies.remove(enemy)
+                    for i in range(enemy.coin_value):
+                        angle = random.uniform(0, 2 * math.pi)
+                        speed = random.uniform(2.0, 4.5)
+                        self.coins.append(
+                            Coin(
+                                enemy.x,
+                                enemy.y,
+                                1,
+                                vx=math.cos(angle) * speed,
+                                vy=math.sin(angle) * speed,
+                                anim_phase=random.randint(0, 62),
+                            )
+                        )
                 self.projectiles.remove(proj)
                 return True
         return False
+
+    def _update_coins(self):
+        alive = []
+        for coin in self.coins:
+            coin.update()
+            if coin.pending_collect:
+                self.balance += coin.value
+            elif not coin.is_expired:
+                alive.append(coin)
+        self.coins = alive
+
+    def collect_coin_at(self, x, y, target_x, target_y):
+        from config import COIN_CONFIG
+
+        radius = COIN_CONFIG["collect_hitbox"]
+        for coin in self.coins:
+            if not coin.collecting and math.hypot(x - coin.x, y - coin.y) <= radius:
+                mx = (coin.x + target_x) / 2
+                my = (coin.y + target_y) / 2
+                dx = target_x - coin.x
+                dy = target_y - coin.y
+                length = max(1.0, math.hypot(dx, dy))
+                sign = random.choice((-1, 1))
+                offset = random.uniform(80, 160)
+                cx = mx + (-dy / length) * sign * offset
+                cy = my + (dx / length) * sign * offset
+                coin.start_collect(target_x, target_y, cx, cy)
 
     def _is_out_of_bounds(self, proj):
         return proj.x < 0 or proj.x > self.width or proj.y < 0 or proj.y > self.height

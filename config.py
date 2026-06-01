@@ -73,4 +73,14 @@ GAME_CONFIG = {
     "hit_flash_frames": 10,
 }
 
+COIN_CONFIG = {
+    "lifetime": 600,
+    "blink_start": 300,
+    "size": 6,
+    "collect_hitbox": 28,
+    "color": (255, 215, 0),
+    "drop_frames": 30,
+    "drop_friction": 0.80,
+}
+
 SETTINGS_FILE = "data/settings.json"

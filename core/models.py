@@ -1,6 +1,6 @@
 import math
 
-from config import GAME_CONFIG
+from config import COIN_CONFIG, GAME_CONFIG
 
 
 class Obstacle:
@@ -44,6 +44,8 @@ class Tower:
 
 
 class Enemy:
+    coin_value = 1
+
     def __init__(self, x, y, size, hp, speed, damage):
         self.x = x
         self.y = y
@@ -102,6 +104,8 @@ class Enemy:
 
 
 class RangedEnemy(Enemy):
+    coin_value = 2
+
     def __init__(
         self, x, y, size, hp, speed, damage, attack_range, fire_rate, initial_delay
     ):
@@ -127,6 +131,87 @@ class RangedEnemy(Enemy):
 
     def in_range(self, target_x, target_y):
         return self.distance_to(target_x, target_y) <= self.attack_range
+
+
+class Coin:
+    _COLLECT_SPEED = 16
+
+    def __init__(self, x, y, value, vx=0, vy=0, anim_phase=0):
+        self.x = x
+        self.y = y
+        self.value = value
+        self.lifetime = COIN_CONFIG["lifetime"]
+        self.vx = vx
+        self.vy = vy
+        self.drop_timer = COIN_CONFIG["drop_frames"]
+        self.anim_tick = anim_phase
+        self.collecting = False
+        self.collect_tx = 0
+        self.collect_ty = 0
+        self.scale = 1.0
+        self.pending_collect = False
+
+    def start_collect(self, tx, ty, cx, cy):
+        self.collecting = True
+        self.collect_tx = tx
+        self.collect_ty = ty
+        self._sx = self.x
+        self._sy = self.y
+        self._cx = cx
+        self._cy = cy
+        self.collect_t = 0.0
+        self.drop_timer = 0
+        self.vx = 0
+        self.vy = 0
+
+    def update(self):
+        if self.collecting:
+            self.collect_t += 0.008 + self.collect_t * 0.055
+            t = min(1.0, self.collect_t)
+            mt = 1.0 - t
+            self.x = (
+                mt * mt * self._sx + 2 * mt * t * self._cx + t * t * self.collect_tx
+            )
+            self.y = (
+                mt * mt * self._sy + 2 * mt * t * self._cy + t * t * self.collect_ty
+            )
+            self.scale = max(0.15, 1.0 - t * 0.85)
+            if t >= 1.0:
+                self.pending_collect = True
+                self.lifetime = 0
+            return
+
+        self.lifetime -= 1
+        if self.drop_timer > 0:
+            self.drop_timer -= 1
+            self.x += self.vx
+            self.y += self.vy
+            f = COIN_CONFIG["drop_friction"]
+            self.vx *= f
+            self.vy *= f
+        else:
+            self.anim_tick += 1
+
+    @property
+    def is_dropping(self):
+        return self.drop_timer > 0
+
+    @property
+    def is_expired(self):
+        return self.lifetime <= 0
+
+    @property
+    def is_blinking(self):
+        return self.lifetime <= COIN_CONFIG["blink_start"]
+
+    @property
+    def visible(self):
+        if self.collecting:
+            return True
+        if not self.is_blinking:
+            return True
+        period = max(3, self.lifetime // 8)
+        return (self.lifetime // period) % 2 == 0
 
 
 class Projectile:

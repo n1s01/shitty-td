@@ -3,7 +3,7 @@ import random
 
 import pygame
 
-from config import COLORS, GAME_CONFIG
+from config import COIN_CONFIG, COLORS, GAME_CONFIG
 from core.game_engine import GameEngine
 from core.models import RangedEnemy
 from view.assets import AssetStore
@@ -17,6 +17,7 @@ class GameScene:
         self.engine = GameEngine(width, height)
         self.assets = AssetStore()
         self.font = make_font(14)
+        self.hud_font = make_font(20)
         self.game_over_font = make_font(48)
         self.grass_tiles = [
             "tiles/grass_1.png",
@@ -37,6 +38,10 @@ class GameScene:
         return pygame.Rect(self.width - w - 16, self.height - h - 16, w, h)
 
     def handle_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            tx, ty = self._balance_coin_center()
+            self.engine.collect_coin_at(event.pos[0], event.pos[1], tx, ty)
+            return None
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.engine.wave_ready:
                 if self._wave_button_rect().collidepoint(event.pos):
@@ -78,6 +83,8 @@ class GameScene:
             COLORS["enemy_projectile_fill"],
             10,
         )
+        self._draw_coins(surface)
+        self._draw_balance(surface)
         if self.engine.is_victory:
             self._draw_victory(surface)
         elif self.engine.is_game_over:
@@ -294,6 +301,90 @@ class GameScene:
                 end_x = int(proj.x - proj.vx * tail_length)
                 end_y = int(proj.y - proj.vy * tail_length)
                 pygame.draw.line(surface, fallback_color, (cx, cy), (end_x, end_y), 2)
+
+    def _balance_coin_center(self):
+        r = COIN_CONFIG["size"]
+        return 16 + r, 16 + r
+
+    def _draw_coins(self, surface):
+        r = COIN_CONFIG["size"]
+        color = COIN_CONFIG["color"]
+        img_base = self.assets.optional_image("sprites/coin.png", (r * 2, r * 2))
+        for coin in self.engine.coins:
+            if not coin.visible:
+                continue
+            cx, cy = int(coin.x), int(coin.y)
+
+            if coin.collecting:
+                sz = max(2, int(r * 2 * coin.scale))
+                if img_base is not None:
+                    pygame.draw.circle(
+                        surface, (0, 0, 0, 120), (cx, cy + 2), max(1, sz // 2)
+                    )
+                    img = pygame.transform.scale(img_base, (sz, sz))
+                    surface.blit(img, img.get_rect(center=(cx, cy)))
+                else:
+                    self._draw_coin_shape(surface, cx, cy, sz // 2, sz // 2, color)
+                continue
+
+            if coin.is_dropping:
+                draw_x, draw_y = cx, cy
+                spin_w = r * 2
+            else:
+                draw_y = cy + int(2 * math.sin(coin.anim_tick * 0.09))
+                draw_x = cx
+                spin_w = max(
+                    int(r * 0.8), int(r * 2 * abs(math.cos(coin.anim_tick * 0.055)))
+                )
+
+            d = r * 2
+            if img_base is not None:
+                shadow_r = pygame.Rect(0, 0, spin_w + 2, d + 2)
+                shadow_r.center = (draw_x + 2, draw_y + 3)
+                pygame.draw.ellipse(surface, (30, 30, 20), shadow_r)
+                img = (
+                    pygame.transform.scale(img_base, (spin_w, d))
+                    if spin_w != d
+                    else img_base
+                )
+                surface.blit(img, img.get_rect(center=(draw_x, draw_y)))
+            else:
+                self._draw_coin_shape(surface, draw_x, draw_y, spin_w, d, color)
+
+    def _draw_coin_shape(self, surface, cx, cy, w, h, color):
+        shadow = pygame.Rect(0, 0, w + 2, h + 2)
+        shadow.center = (cx + 2, cy + 3)
+        pygame.draw.ellipse(surface, (30, 30, 20), shadow)
+        outline = pygame.Rect(0, 0, w + 2, h + 2)
+        outline.center = (cx, cy)
+        pygame.draw.ellipse(surface, (60, 40, 0), outline)
+        body = pygame.Rect(0, 0, w, h)
+        body.center = (cx, cy)
+        pygame.draw.ellipse(surface, color, body)
+        if w > 4:
+            hi = pygame.Rect(0, 0, max(2, w // 3), max(2, h // 3))
+            hi.center = (cx - w // 5, cy - h // 4)
+            pygame.draw.ellipse(surface, (255, 248, 160), hi)
+
+    def _draw_balance(self, surface):
+        r = COIN_CONFIG["size"]
+        img = self.assets.optional_image("sprites/coin.png", (r * 2, r * 2))
+        x, y = 16, 16
+        if img is not None:
+            surface.blit(img, (x, y))
+            text_x = x + r * 2 + 6
+        else:
+            cx, cy = x + r, y + r
+            pygame.draw.circle(surface, (120, 90, 10), (cx, cy), r)
+            pygame.draw.circle(surface, COIN_CONFIG["color"], (cx, cy), r - 2)
+            pygame.draw.circle(
+                surface, (255, 240, 120), (cx - r // 3, cy - r // 3), r // 3
+            )
+            text_x = x + r * 2 + 6
+        text_surf, text_rect = self.hud_font.render(
+            str(self.engine.balance), (255, 240, 180)
+        )
+        surface.blit(text_surf, (text_x, y + r - text_rect.height // 2))
 
     def _draw_wave_button(self, surface):
         rect = self._wave_button_rect()
