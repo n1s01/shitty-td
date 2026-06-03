@@ -254,12 +254,68 @@ class GameScene:
             pygame.draw.rect(surface, COLORS["tower_fill"], rect)
             pygame.draw.rect(surface, COLORS["tower_outline"], rect, 3)
         self._draw_tower_keeper(surface)
-        text_surf, text_rect = self.font.render(f"HP: {tower.hp}", COLORS["tower_text"])
-        hitbox_half = tower.hitbox_size // 2
-        surface.blit(
-            text_surf,
-            (int(tower.x) - text_rect.width // 2, int(tower.y) - hitbox_half - 22),
+        self._draw_tower_hp(surface)
+
+    def _draw_tower_hp(self, surface):
+        tower = self.engine.tower
+        bar_w, bar_h = 140, 18
+        cx = int(tower.x)
+        top = int(tower.y) - tower.hitbox_size // 2 - 32
+        panel = pygame.Rect(cx - bar_w // 2, top, bar_w, bar_h)
+
+        # Деревянная рамка в стиле таверны
+        pygame.draw.rect(surface, (44, 26, 14), panel, border_radius=6)
+        track = panel.inflate(-6, -6)
+        pygame.draw.rect(surface, (28, 16, 9), track, border_radius=4)
+
+        # Заливка здоровья: зелёная -> жёлтая -> красная
+        pct = tower.hp / tower.max_hp
+        if pct > 0.5:
+            fill_color = (96, 184, 88)
+        elif pct > 0.25:
+            fill_color = (224, 176, 56)
+        else:
+            fill_color = (208, 72, 56)
+
+        fill_w = int(track.width * pct)
+        if fill_w > 0:
+            fill = pygame.Rect(track.left, track.top, fill_w, track.height)
+            pygame.draw.rect(surface, fill_color, fill, border_radius=4)
+            highlight = pygame.Rect(
+                track.left, track.top, fill_w, max(1, track.height // 3)
+            )
+            light = tuple(min(255, c + 45) for c in fill_color)
+            pygame.draw.rect(surface, light, highlight, border_radius=4)
+
+        pygame.draw.rect(surface, (138, 92, 50), panel, width=2, border_radius=6)
+
+        # Текст с лёгкой тенью для читаемости
+        label = f"{tower.hp} / {tower.max_hp}"
+        shadow, _ = self.font.render(label, (20, 12, 6))
+        text_surf, text_rect = self.font.render(label, (255, 246, 222))
+        tx = cx - text_rect.width // 2
+        ty = panel.centery - text_rect.height // 2
+        surface.blit(shadow, (tx + 1, ty + 1))
+        surface.blit(text_surf, (tx, ty))
+
+        self._draw_reload_bar(surface, panel)
+
+    def _draw_reload_bar(self, surface, hp_panel):
+        progress = self.engine.reload_progress
+        if progress >= 1.0:
+            return
+        bar = pygame.Rect(
+            hp_panel.left + 6, hp_panel.bottom + 3, hp_panel.width - 12, 4
         )
+        pygame.draw.rect(surface, (28, 16, 9), bar, border_radius=2)
+        fill_w = int(bar.width * progress)
+        if fill_w > 0:
+            pygame.draw.rect(
+                surface,
+                (210, 190, 120),
+                (bar.left, bar.top, fill_w, bar.height),
+                border_radius=2,
+            )
 
     def _draw_tower_keeper(self, surface):
         timer = self.engine.tower_shoot_timer
