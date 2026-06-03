@@ -499,6 +499,40 @@ def make_pebbles():
     return img
 
 
+def make_mushroom(cap):
+    img = surface((12, 13))
+    stem = (228, 218, 192)
+    stem_shadow = (192, 180, 152)
+    edge = tuple(max(0, ch - 45) for ch in cap)
+    px(img, stem_shadow, (5, 6, 3, 6))
+    px(img, stem, (5, 6, 2, 6))
+    px(img, edge, (2, 6, 8, 2))
+    px(img, cap, (3, 3, 6, 3))
+    px(img, cap, (2, 5, 8, 2))
+    px(img, (245, 240, 228), (4, 4, 1, 1))
+    px(img, (245, 240, 228), (7, 4, 1, 1))
+    return img
+
+
+def make_fern():
+    img = surface((16, 16))
+    dark = (38, 92, 46)
+    mid = (62, 130, 62)
+    light = (98, 166, 84)
+    px(img, dark, (7, 6, 2, 9))
+    for x, y, h, c in [
+        (3, 9, 6, dark),
+        (11, 9, 6, dark),
+        (4, 6, 7, mid),
+        (10, 6, 7, mid),
+        (6, 3, 5, light),
+        (8, 3, 5, light),
+    ]:
+        px(img, c, (x, y, 2, h))
+    px(img, light, (7, 2, 2, 3))
+    return img
+
+
 def make_stones():
     img = surface((48, 32))
     for color, rect in [
@@ -569,6 +603,9 @@ def main():
         "decor/reeds_1.png": make_reeds(0),
         "decor/reeds_2.png": make_reeds(1),
         "decor/pebbles.png": make_pebbles(),
+        "decor/mushroom_red.png": make_mushroom((196, 58, 52)),
+        "decor/mushroom_brown.png": make_mushroom((152, 98, 56)),
+        "decor/fern.png": make_fern(),
         "sprites/tavern_tower.png": make_tower(),
         "sprites/tower_keeper_idle.png": make_tower_keeper(0),
         "sprites/tower_keeper_shoot_1.png": make_tower_keeper(1),

@@ -188,17 +188,21 @@ class MapGenerator:
         span = (hi - lo) or 1.0
 
         flower_assets = ["decor/flowers_blue.png", "decor/flowers_purple.png"]
-        tuft_assets = [
+        scatter_assets = [
             "decor/grass_tuft_1.png",
             "decor/grass_tuft_2.png",
             "decor/clover.png",
+            "decor/mushroom_red.png",
+            "decor/mushroom_brown.png",
+            "decor/fern.png",
+            "decor/pebbles.png",
         ]
         lily_assets = ["decor/lily_pad_1.png", "decor/lily_pad_2.png"]
         reed_assets = ["decor/reeds_1.png", "decor/reeds_2.png"]
 
         flower_density = GAME_CONFIG["flower_density"]
         flower_threshold = GAME_CONFIG["flower_threshold"]
-        tuft_density = GAME_CONFIG["tuft_density"]
+        scatter_density = GAME_CONFIG["scatter_density"]
         lily_density = GAME_CONFIG["lily_density"]
         reed_density = GAME_CONFIG["reed_density"]
 
@@ -230,9 +234,11 @@ class MapGenerator:
                         decor.append(
                             self._decor_item(rng.choice(flower_assets), cx, cy, rng, ts)
                         )
-                    elif rng.random() < tuft_density:
+                    elif rng.random() < scatter_density:
                         decor.append(
-                            self._decor_item(rng.choice(tuft_assets), cx, cy, rng, ts)
+                            self._decor_item(
+                                rng.choice(scatter_assets), cx, cy, rng, ts
+                            )
                         )
         return decor
 
@@ -247,9 +253,10 @@ class MapGenerator:
     def _place_obstacles(self, biomes, rng):
         specs = GAME_CONFIG["land_obstacles"]
         target = GAME_CONFIG["land_obstacle_count"]
+        min_dist = GAME_CONFIG["land_obstacle_min_dist"]
         obstacles = []
         attempts = 0
-        while len(obstacles) < target and attempts < target * 60:
+        while len(obstacles) < target and attempts < target * 200:
             attempts += 1
             spec = rng.choice(specs)
             w, h = spec["size"]
@@ -259,26 +266,19 @@ class MapGenerator:
                 continue
             if self._biome_at(biomes, x, y) != GRASS:
                 continue
-            obstacle = Obstacle(
-                x=x,
-                y=y,
-                width=w,
-                height=h,
-                asset=spec["asset"],
-                solid=spec.get("solid", True),
-            )
-            if self._overlaps(obstacle, obstacles):
+            if any(math.hypot(x - o.x, y - o.y) < min_dist for o in obstacles):
                 continue
-            obstacles.append(obstacle)
+            obstacles.append(
+                Obstacle(
+                    x=x,
+                    y=y,
+                    width=w,
+                    height=h,
+                    asset=spec["asset"],
+                    solid=spec.get("solid", True),
+                )
+            )
         return obstacles
-
-    def _overlaps(self, obstacle, others):
-        ox, oy, ow, oh = obstacle.rect
-        padded = (ox - 18, oy - 18, ow + 36, oh + 36)
-        for other in others:
-            if _rects_overlap(padded, other.rect):
-                return True
-        return False
 
     def _biome_at(self, biomes, x, y):
         col = int(x / self.tile_size)
@@ -304,9 +304,3 @@ class MapGenerator:
 
     def _is_safe_world(self, x, y):
         return math.hypot(x - self.tower_x, y - self.tower_y) < self.safe_radius
-
-
-def _rects_overlap(a, b):
-    ax, ay, aw, ah = a
-    bx, by, bw, bh = b
-    return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
