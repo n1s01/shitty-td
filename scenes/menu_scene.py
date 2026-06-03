@@ -3,7 +3,7 @@ import pygame
 from config import AVAILABLE_RESOLUTIONS, COLORS
 from settings import load_settings, save_settings
 from view.assets import AssetStore
-from view.fonts import make_font
+from view.fonts import make_pixel_font
 from view.widgets import Button
 
 
@@ -12,6 +12,7 @@ class _BaseMenuScene:
         self.width = width
         self.height = height
         self.assets = AssetStore()
+        self._background = None
 
     def _texture_buttons(self, buttons):
         texture = self.assets.optional_image("tiles/tavern_planks.png")
@@ -19,35 +20,56 @@ class _BaseMenuScene:
             button.texture = texture
 
     def _draw_background(self, surface):
+        if self._background is None:
+            self._background = self._build_background()
+        surface.blit(self._background, (0, 0))
+
+    def _build_background(self):
+        canvas = pygame.Surface((self.width, self.height))
+        image = self.assets.optional_image("ui/menu_background.png")
+        if image is not None:
+            self._blit_cover(canvas, image)
+        else:
+            self._blit_grass(canvas)
+        return canvas
+
+    def _blit_cover(self, canvas, image):
+        img_w, img_h = image.get_size()
+        scale = max(self.width / img_w, self.height / img_h)
+        new_size = (round(img_w * scale), round(img_h * scale))
+        scaled = pygame.transform.smoothscale(image, new_size)
+        x = (self.width - new_size[0]) // 2
+        y = (self.height - new_size[1]) // 2
+        canvas.blit(scaled, (x, y))
+
+    def _blit_grass(self, canvas):
         grass = self.assets.optional_image("tiles/grass.png")
         if grass is None:
-            surface.fill(COLORS["bg"])
+            canvas.fill(COLORS["bg"])
             return
-
         for y in range(0, self.height, grass.get_height()):
             for x in range(0, self.width, grass.get_width()):
-                surface.blit(grass, (x, y))
-
-        shade = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        shade.fill((20, 18, 12, 78))
-        surface.blit(shade, (0, 0))
+                canvas.blit(grass, (x, y))
 
 
 class MenuScene(_BaseMenuScene):
     def __init__(self, width, height):
         super().__init__(width, height)
-        self.font = make_font(20)
-        self.title_font = make_font(36)
+        self.font = make_pixel_font(24)
+        self.title_font = make_pixel_font(48)
+        self.margin_x = 150
+        self.title_y = height // 2 - 160
         self._create_buttons()
 
     def _create_buttons(self):
-        bw, bh = 220, 45
-        cx = self.width // 2 - bw // 2
-        cy = self.height // 2 - 60
+        bw, bh = 260, 52
+        x = self.margin_x
+        y = self.height // 2 - 20
+        gap = 72
         self.buttons = [
-            Button((cx, cy, bw, bh), "Бесконечная игра", self.font),
-            Button((cx, cy + 60, bw, bh), "Настройки", self.font),
-            Button((cx, cy + 120, bw, bh), "Выход", self.font),
+            Button((x, y, bw, bh), "Бесконечная игра", self.font),
+            Button((x, y + gap, bw, bh), "Настройки", self.font),
+            Button((x, y + 2 * gap, bw, bh), "Выход", self.font),
         ]
         self._texture_buttons(self.buttons)
 
@@ -69,19 +91,27 @@ class MenuScene(_BaseMenuScene):
 
     def draw(self, surface):
         self._draw_background(surface)
-        title_surf, title_rect = self.title_font.render(
-            "Tavern Defense", COLORS["title_text"]
-        )
-        surface.blit(title_surf, (self.width // 2 - title_rect.width // 2, 60))
+        self._draw_title(surface)
         for btn in self.buttons:
             btn.draw(surface)
+
+    def _draw_title(self, surface):
+        title = "Tavern Defense"
+        x, y = self.margin_x, self.title_y
+        shadow, _ = self.title_font.render(title, (38, 22, 12))
+        main, _ = self.title_font.render(title, (245, 222, 150))
+        surface.blit(shadow, (x + 3, y + 3))
+        surface.blit(main, (x, y))
 
 
 class SettingsScene(_BaseMenuScene):
     def __init__(self, width, height):
         super().__init__(width, height)
-        self.font = make_font(18)
-        self.title_font = make_font(28)
+        self.font = make_pixel_font(20)
+        self.title_font = make_pixel_font(34)
+        self.margin_x = 150
+        self.panel_w = 300
+        self.title_y = height // 2 - 160
         self.settings = load_settings()
         self.res_index = self._get_res_index()
         self._create_buttons()
@@ -93,32 +123,31 @@ class SettingsScene(_BaseMenuScene):
         return 1
 
     def _create_buttons(self):
-        cx = self.width // 2
-        cy = self.height // 2 - 60
-        bw = 260
+        x = self.margin_x
+        bw = self.panel_w
+        bh = 48
+        y = self.height // 2 - 40
         self.fullscreen_btn = Button(
-            (cx - bw // 2, cy, bw, 40),
+            (x, y, bw, bh),
             self._fullscreen_text(),
             self.font,
         )
-        row_y = cy + 60
-        self.res_left = Button((cx - bw // 2, row_y, 40, 40), "<", self.font)
-        self.res_right = Button((cx + bw // 2 - 40, row_y, 40, 40), ">", self.font)
-        btn_w = (bw - 10) // 2
-        row_actions = cy + 130
+        row_y = y + 64
+        self.res_left = Button((x, row_y, 48, bh), "<", self.font)
+        self.res_right = Button((x + bw - 48, row_y, 48, bh), ">", self.font)
+        btn_w = (bw - 12) // 2
+        row_actions = row_y + 80
+        self.back_btn = Button((x, row_actions, btn_w, bh), "Назад", self.font)
         self.apply_btn = Button(
-            (cx - bw // 2, row_actions, btn_w, 40), "Применить", self.font
-        )
-        self.back_btn = Button(
-            (cx - bw // 2 + btn_w + 10, row_actions, btn_w, 40), "Назад", self.font
+            (x + btn_w + 12, row_actions, btn_w, bh), "Применить", self.font
         )
         self._texture_buttons(
             [
                 self.fullscreen_btn,
                 self.res_left,
                 self.res_right,
-                self.apply_btn,
                 self.back_btn,
+                self.apply_btn,
             ]
         )
 
@@ -138,7 +167,7 @@ class SettingsScene(_BaseMenuScene):
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
-            hover_btns = [self.fullscreen_btn, self.apply_btn, self.back_btn]
+            hover_btns = [self.fullscreen_btn, self.back_btn, self.apply_btn]
             if self._res_enabled():
                 hover_btns += [self.res_left, self.res_right]
             for btn in hover_btns:
@@ -167,10 +196,7 @@ class SettingsScene(_BaseMenuScene):
 
     def draw(self, surface):
         self._draw_background(surface)
-        title_surf, title_rect = self.title_font.render(
-            "Настройки", COLORS["title_text"]
-        )
-        surface.blit(title_surf, (self.width // 2 - title_rect.width // 2, 40))
+        self._draw_title(surface)
         self.fullscreen_btn.draw(surface)
         if self._res_enabled():
             self.res_left.draw(surface)
@@ -178,8 +204,16 @@ class SettingsScene(_BaseMenuScene):
             res_surf, res_rect = self.font.render(
                 self._res_text(), COLORS["button_text"]
             )
-            rx = self.width // 2 - res_rect.width // 2
+            rx = self.margin_x + self.panel_w // 2 - res_rect.width // 2
             ry = self.res_left.rect.centery - res_rect.height // 2
             surface.blit(res_surf, (rx, ry))
-        self.apply_btn.draw(surface)
         self.back_btn.draw(surface)
+        self.apply_btn.draw(surface)
+
+    def _draw_title(self, surface):
+        title = "Настройки"
+        x, y = self.margin_x, self.title_y
+        shadow, _ = self.title_font.render(title, (38, 22, 12))
+        main, _ = self.title_font.render(title, (245, 222, 150))
+        surface.blit(shadow, (x + 3, y + 3))
+        surface.blit(main, (x, y))
