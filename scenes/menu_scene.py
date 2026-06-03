@@ -105,16 +105,30 @@ class MenuScene(_BaseMenuScene):
 
 
 class SettingsScene(_BaseMenuScene):
-    def __init__(self, width, height):
+    def __init__(self, width, height, background=None):
         super().__init__(width, height)
+        self.snapshot = background
         self.font = make_pixel_font(20)
         self.title_font = make_pixel_font(34)
-        self.margin_x = 150
         self.panel_w = 300
+        # Поверх игры — по центру, из главного меню — слева (не перекрывая башню)
+        if background is not None:
+            self.margin_x = (width - self.panel_w) // 2
+        else:
+            self.margin_x = 150
         self.title_y = height // 2 - 160
         self.settings = load_settings()
         self.res_index = self._get_res_index()
         self._create_buttons()
+
+    def _build_background(self):
+        if self.snapshot is None:
+            return super()._build_background()
+        canvas = self.snapshot.copy()
+        dim = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        dim.fill((12, 10, 8, 170))
+        canvas.blit(dim, (0, 0))
+        return canvas
 
     def _get_res_index(self):
         res = tuple(self.settings["resolution"])
@@ -212,8 +226,9 @@ class SettingsScene(_BaseMenuScene):
 
     def _draw_title(self, surface):
         title = "Настройки"
-        x, y = self.margin_x, self.title_y
         shadow, _ = self.title_font.render(title, (38, 22, 12))
-        main, _ = self.title_font.render(title, (245, 222, 150))
+        main, trect = self.title_font.render(title, (245, 222, 150))
+        x = self.margin_x + self.panel_w // 2 - trect.width // 2
+        y = self.title_y
         surface.blit(shadow, (x + 3, y + 3))
         surface.blit(main, (x, y))

@@ -50,6 +50,16 @@ class App:
             return pygame.event.Event(event.type, {**event.dict, "pos": new_pos})
         return event
 
+    def _snapshot_game(self, scene):
+        if not isinstance(scene, GameScene):
+            return None
+        surface = pygame.Surface((self.base_w, self.base_h))
+        was_paused = scene.paused
+        scene.paused = False
+        scene.draw(surface)
+        scene.paused = was_paused
+        return surface
+
     def _apply_settings(self):
         self.settings = load_settings()
         self.screen = self._create_screen()
@@ -88,7 +98,8 @@ class App:
             self.return_scene = None
         elif result == "settings":
             self.return_scene = self.scene
-            self.scene = SettingsScene(self.base_w, self.base_h)
+            snapshot = self._snapshot_game(self.scene)
+            self.scene = SettingsScene(self.base_w, self.base_h, background=snapshot)
         elif result == "close_settings":
             self.scene = self.return_scene or MenuScene(self.base_w, self.base_h)
             self.return_scene = None
