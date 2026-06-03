@@ -17,6 +17,7 @@ class App:
         self.clock = pygame.time.Clock()
         self.running = True
         self.scene = MenuScene(self.base_w, self.base_h)
+        self.return_scene = None
 
     def _create_screen(self):
         if self.settings["is_fullscreen"]:
@@ -52,7 +53,8 @@ class App:
     def _apply_settings(self):
         self.settings = load_settings()
         self.screen = self._create_screen()
-        self.scene = MenuScene(self.base_w, self.base_h)
+        self.scene = self.return_scene or MenuScene(self.base_w, self.base_h)
+        self.return_scene = None
 
     def run(self):
         while self.running:
@@ -83,8 +85,13 @@ class App:
             self.scene = GameScene(self.base_w, self.base_h)
         elif result == "menu":
             self.scene = MenuScene(self.base_w, self.base_h)
+            self.return_scene = None
         elif result == "settings":
+            self.return_scene = self.scene
             self.scene = SettingsScene(self.base_w, self.base_h)
+        elif result == "close_settings":
+            self.scene = self.return_scene or MenuScene(self.base_w, self.base_h)
+            self.return_scene = None
         elif result == "apply_settings":
             self._apply_settings()
 

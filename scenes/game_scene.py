@@ -7,7 +7,8 @@ from core.game_engine import GameEngine
 from core.map_generator import GRASS, SHORE, WATER
 from core.models import RangedEnemy
 from view.assets import AssetStore
-from view.fonts import make_font
+from view.fonts import make_font, make_pixel_font
+from view.widgets import Button
 
 BIOME_FALLBACK = {
     WATER: (46, 116, 160),
@@ -36,6 +37,32 @@ class GameScene:
         self._water_surface = None
         self._hud_tick = 0
 
+        self.paused = False
+        self.pause_title_font = make_pixel_font(56)
+        self._create_pause_menu()
+
+    def _create_pause_menu(self):
+        bw, bh = 340, 56
+        cx = self.width // 2 - bw // 2
+        cy = self.height // 2 - 40
+        gap = 76
+        pause_font = make_pixel_font(24)
+        self.resume_btn = Button((cx, cy, bw, bh), "Продолжить", pause_font)
+        self.pause_settings_btn = Button(
+            (cx, cy + gap, bw, bh), "Настройки", pause_font
+        )
+        self.pause_menu_btn = Button(
+            (cx, cy + 2 * gap, bw, bh), "В главное меню", pause_font
+        )
+        self.pause_buttons = [
+            self.resume_btn,
+            self.pause_settings_btn,
+            self.pause_menu_btn,
+        ]
+        texture = self.assets.optional_image("tiles/tavern_planks.png")
+        for btn in self.pause_buttons:
+            btn.texture = texture
+
     def _wave_button_rect(self):
         img = self.assets.optional_image("ui/wave_button.png")
         w = img.get_width() if img else 120
@@ -43,6 +70,9 @@ class GameScene:
         return pygame.Rect(self.width - w - 16, self.height - h - 16, w, h)
 
     def handle_event(self, event):
+        if self.paused:
+            return self._handle_pause_event(event)
+
         if event.type == pygame.MOUSEMOTION:
             tx, ty = self._balance_coin_center()
             self.engine.collect_coin_at(event.pos[0], event.pos[1], tx, ty)
@@ -56,10 +86,31 @@ class GameScene:
                 self.engine.shoot_at(event.pos[0], event.pos[1])
             return None
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            return "menu"
+            if self.engine.is_game_over or self.engine.is_victory:
+                return "menu"
+            self.paused = True
+        return None
+
+    def _handle_pause_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            for btn in self.pause_buttons:
+                btn.check_hover(event.pos)
+            return None
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.resume_btn.is_clicked(event.pos):
+                self.paused = False
+            elif self.pause_settings_btn.is_clicked(event.pos):
+                return "settings"
+            elif self.pause_menu_btn.is_clicked(event.pos):
+                return "menu"
+            return None
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.paused = False
         return None
 
     def update(self):
+        if self.paused:
+            return
         self.engine.update()
         self._hud_tick += 1
 
@@ -91,6 +142,24 @@ class GameScene:
             self._draw_game_over(surface)
         else:
             self._draw_wave_button(surface)
+        if self.paused:
+            self._draw_pause_menu(surface)
+
+    def _draw_pause_menu(self, surface):
+        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        overlay.fill((12, 10, 8, 170))
+        surface.blit(overlay, (0, 0))
+
+        title = "Пауза"
+        shadow, _ = self.pause_title_font.render(title, (20, 12, 6))
+        main, trect = self.pause_title_font.render(title, (245, 222, 150))
+        tx = self.width // 2 - trect.width // 2
+        ty = self.height // 2 - 160
+        surface.blit(shadow, (tx + 3, ty + 3))
+        surface.blit(main, (tx, ty))
+
+        for btn in self.pause_buttons:
+            btn.draw(surface)
 
     def _draw_background(self, surface):
         ts = self.engine.tile_size

@@ -186,9 +186,9 @@ class SettingsScene(_BaseMenuScene):
                 save_settings(self.settings)
                 return "apply_settings"
             elif self.back_btn.is_clicked(pos):
-                return "menu"
+                return "close_settings"
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            return "menu"
+            return "close_settings"
         return None
 
     def update(self):
