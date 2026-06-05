@@ -86,7 +86,7 @@ class GameScene:
                 self.engine.shoot_at(event.pos[0], event.pos[1])
             return None
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            if self.engine.is_game_over or self.engine.is_victory:
+            if self.engine.is_game_over:
                 return "menu"
             self.paused = True
         return None
@@ -136,9 +136,7 @@ class GameScene:
         self._draw_effects(surface)
         self._draw_coins(surface)
         self._draw_balance(surface)
-        if self.engine.is_victory:
-            self._draw_victory(surface)
-        elif self.engine.is_game_over:
+        if self.engine.is_game_over:
             self._draw_game_over(surface)
         else:
             self._draw_wave_button(surface)
@@ -604,12 +602,6 @@ class GameScene:
         tx = rect.centerx - text_rect.width // 2
         ty = rect.centery - text_rect.height // 2
         surface.blit(text_surf, (tx, ty))
-
-    def _draw_victory(self, surface):
-        text_surf, text_rect = self.game_over_font.render("ПОБЕДА!", (255, 220, 60))
-        x = self.width // 2 - text_rect.width // 2
-        y = self.height // 2 - text_rect.height // 2
-        surface.blit(text_surf, (x, y))
 
     def _draw_game_over(self, surface):
         text_surf, text_rect = self.game_over_font.render(

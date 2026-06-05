@@ -21,7 +21,8 @@ class App:
 
     def _create_screen(self):
         if self.settings["is_fullscreen"]:
-            screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            desktop_w, desktop_h = pygame.display.get_desktop_sizes()[0]
+            screen = pygame.display.set_mode((desktop_w, desktop_h), pygame.NOFRAME)
         else:
             screen = pygame.display.set_mode(self.settings["resolution"])
         self.screen_w, self.screen_h = screen.get_size()
@@ -72,6 +73,11 @@ class App:
                 if event.type == pygame.QUIT:
                     self.running = False
                     break
+                if event.type == pygame.WINDOWFOCUSLOST:
+                    if isinstance(self.scene, GameScene) and not self.scene.paused:
+                        if not self.scene.engine.is_game_over:
+                            self.scene.paused = True
+                    continue
                 result = self.scene.handle_event(self._translate_event(event))
                 self._handle_scene_result(result)
 

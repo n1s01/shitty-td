@@ -6,6 +6,7 @@ from core.grid import Grid
 from core.map_generator import WATER, MapGenerator
 from core.models import Coin, Enemy, Projectile, RangedEnemy, ShatterEffect, Tower
 from core.pathfinding import find_path, smooth_path
+from core.wave_generator import make_wave
 
 
 class GameEngine:
@@ -88,27 +89,14 @@ class GameEngine:
 
     @property
     def wave_progress(self):
-        if not self.wave_active or self.wave_index >= len(GAME_CONFIG["waves"]):
+        if not self.wave_active:
             return 1.0
-        wave = GAME_CONFIG["waves"][self.wave_index]
+        wave = make_wave(self.wave_index)
         return self.spawned_this_wave / max(1, wave["count"])
 
     @property
     def wave_ready(self):
-        waves = GAME_CONFIG["waves"]
-        return (
-            not self.wave_active
-            and not self.is_game_over
-            and self.wave_index < len(waves)
-        )
-
-    @property
-    def is_victory(self):
-        return (
-            not self.wave_active
-            and self.wave_index >= len(GAME_CONFIG["waves"])
-            and not self.enemies
-        )
+        return not self.wave_active and not self.is_game_over
 
     def start_wave(self):
         self.wave_active = True
@@ -118,10 +106,11 @@ class GameEngine:
     def _handle_spawning(self):
         if not self.wave_active:
             return
-        wave = GAME_CONFIG["waves"][self.wave_index]
+        wave = make_wave(self.wave_index)
+        max_alive = GAME_CONFIG["endless"]["max_alive"]
         if self.spawned_this_wave < wave["count"]:
             self.spawn_timer += 1
-            if self.spawn_timer >= wave["interval"]:
+            if self.spawn_timer >= wave["interval"] and len(self.enemies) < max_alive:
                 self.spawn_timer = 0
                 self._spawn_enemy(wave)
         elif not self.enemies:
@@ -147,9 +136,9 @@ class GameEngine:
                 x=x,
                 y=y,
                 size=size,
-                hp=GAME_CONFIG["enemy_max_hp"],
-                speed=GAME_CONFIG["enemy_speed"],
-                damage=GAME_CONFIG["enemy_damage"],
+                hp=wave["enemy_hp"],
+                speed=wave["enemy_speed"],
+                damage=wave["enemy_damage"],
                 attack_range=GAME_CONFIG["ranged_enemy_range"],
                 fire_rate=GAME_CONFIG["ranged_enemy_fire_rate"],
                 initial_delay=GAME_CONFIG["ranged_enemy_initial_delay"],
@@ -159,9 +148,9 @@ class GameEngine:
                 x=x,
                 y=y,
                 size=size,
-                hp=GAME_CONFIG["enemy_max_hp"],
-                speed=GAME_CONFIG["enemy_speed"],
-                damage=GAME_CONFIG["enemy_damage"],
+                hp=wave["enemy_hp"],
+                speed=wave["enemy_speed"],
+                damage=wave["enemy_damage"],
             )
 
         self.spawned_this_wave += 1
@@ -226,7 +215,7 @@ class GameEngine:
                     vx=dx / dist,
                     vy=dy / dist,
                     speed=GAME_CONFIG["ranged_enemy_projectile_speed"],
-                    damage=GAME_CONFIG["enemy_damage"],
+                    damage=enemy.damage,
                 )
             )
 
