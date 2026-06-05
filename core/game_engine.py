@@ -270,6 +270,8 @@ class GameEngine:
                 enemy.knockback_vx = proj.vx * GAME_CONFIG["knockback_force"]
                 enemy.knockback_vy = proj.vy * GAME_CONFIG["knockback_force"]
                 enemy.hit_flash_time = GAME_CONFIG["hit_flash_frames"]
+                if isinstance(enemy, RangedEnemy):
+                    enemy.reset_cooldown()
                 if enemy.is_dead:
                     self.enemies.remove(enemy)
                     for i in range(enemy.coin_value):

@@ -433,8 +433,6 @@ class GameScene:
                 )
                 pygame.draw.circle(surface, color, pos, r)
                 pygame.draw.circle(surface, COLORS["enemy_outline"], pos, r, 2)
-            if isinstance(enemy, RangedEnemy):
-                pygame.draw.circle(surface, (180, 100, 220), pos, enemy.attack_range, 1)
             if enemy.hp < enemy.max_hp:
                 self._draw_enemy_hp(surface, enemy, r)
 

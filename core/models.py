@@ -99,16 +99,18 @@ class Enemy:
         dx = next_x - self.x
         dy = next_y - self.y
         dist = math.hypot(dx, dy)
-        if dist == 0:
-            return
-        if dist < self.speed:
-            self.x = next_x
-            self.y = next_y
-            if self.path and self.path_index < len(self.path):
-                self.path_index += 1
-        else:
-            self.x += (dx / dist) * self.speed
-            self.y += (dy / dist) * self.speed
+        if dist != 0:
+            if dist < self.speed:
+                self.x = next_x
+                self.y = next_y
+                if self.path and self.path_index < len(self.path):
+                    self.path_index += 1
+            else:
+                self.x += (dx / dist) * self.speed
+                self.y += (dy / dist) * self.speed
+        self.tick_status()
+
+    def tick_status(self):
         if self.hit_flash_time > 0:
             self.hit_flash_time -= 1
         if self.knockback_vx != 0 or self.knockback_vy != 0:
@@ -150,6 +152,7 @@ class RangedEnemy(Enemy):
 
     def move_towards(self, target_x, target_y):
         if self.distance_to(target_x, target_y) <= self.attack_range:
+            self.tick_status()
             return
         super().move_towards(target_x, target_y)
 
