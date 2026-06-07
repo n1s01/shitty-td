@@ -68,8 +68,9 @@ class MenuScene(_BaseMenuScene):
         gap = 72
         self.buttons = [
             Button((x, y, bw, bh), "Бесконечная игра", self.font),
-            Button((x, y + gap, bw, bh), "Настройки", self.font),
-            Button((x, y + 2 * gap, bw, bh), "Выход", self.font),
+            Button((x, y + gap, bw, bh), "Прокачка", self.font),
+            Button((x, y + 2 * gap, bw, bh), "Настройки", self.font),
+            Button((x, y + 3 * gap, bw, bh), "Выход", self.font),
         ]
         self._texture_buttons(self.buttons)
 
@@ -81,8 +82,10 @@ class MenuScene(_BaseMenuScene):
             if self.buttons[0].is_clicked(event.pos):
                 return "game"
             if self.buttons[1].is_clicked(event.pos):
-                return "settings"
+                return "upgrades"
             if self.buttons[2].is_clicked(event.pos):
+                return "settings"
+            if self.buttons[3].is_clicked(event.pos):
                 return "quit"
         return None
 

@@ -4,6 +4,7 @@ from config import GAME_CONFIG, LOGICAL_RESOLUTION
 from core.profile import load_profile, save_profile
 from scenes.game_scene import GameScene
 from scenes.menu_scene import MenuScene, SettingsScene
+from scenes.upgrade_scene import UpgradeScene
 from settings import load_settings
 
 
@@ -117,6 +118,8 @@ class App:
             self._bank_run_coins()
             self.scene = MenuScene(self.base_w, self.base_h)
             self.return_scene = None
+        elif result == "upgrades":
+            self.scene = UpgradeScene(self.base_w, self.base_h)
         elif result == "settings":
             self.return_scene = self.scene
             snapshot = self._snapshot_game(self.scene)
