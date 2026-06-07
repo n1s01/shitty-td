@@ -6,18 +6,27 @@ from core.grid import Grid
 from core.map_generator import WATER, MapGenerator
 from core.models import Coin, Enemy, Projectile, RangedEnemy, ShatterEffect, Tower
 from core.pathfinding import find_path, smooth_path
+from core.upgrades import effective_stats
 from core.wave_generator import make_wave
 
 
 class GameEngine:
-    def __init__(self, width, height):
+    def __init__(self, width, height, stats=None):
+        if stats is None:
+            stats = effective_stats({"coins": 0, "upgrades": {}})
         self.width = width
         self.height = height
+        self.fire_cooldown_max = stats["tower_fire_cooldown"]
+        self.projectile_damage = stats["projectile_damage"]
+        self.auto_fire = stats["auto_fire"]
+        self.auto_wave = stats["auto_wave"]
+        self.auto_collect = stats["auto_collect"]
+        self.obstacle_breaks_left = stats["obstacle_breaks"]
         self.tower = Tower(
             x=width / 2,
             y=height / 2,
             size=GAME_CONFIG["tower_size"],
-            max_hp=GAME_CONFIG["tower_max_hp"],
+            max_hp=stats["tower_max_hp"],
             hitbox_size=GAME_CONFIG["tower_hitbox_size"],
         )
         self.enemies = []
@@ -78,11 +87,11 @@ class GameEngine:
             )
             self.tower_shoot_timer = GAME_CONFIG["tower_shoot_anim_frames"]
             self.tower_last_shot_dir = (dx / dist, dy / dist)
-            self.fire_cooldown = GAME_CONFIG["tower_fire_cooldown"]
+            self.fire_cooldown = self.fire_cooldown_max
 
     @property
     def reload_progress(self):
-        max_cd = GAME_CONFIG["tower_fire_cooldown"]
+        max_cd = self.fire_cooldown_max
         if max_cd <= 0 or self.fire_cooldown <= 0:
             return 1.0
         return 1.0 - self.fire_cooldown / max_cd
@@ -183,6 +192,23 @@ class GameEngine:
         if grid_path:
             grid_path = smooth_path(self.grid, grid_path)
             enemy.path = [self.grid.grid_to_world(c, r) for c, r in grid_path]
+            enemy.path_index = 0
+
+    def remove_obstacle(self, obstacle):
+        if obstacle not in self.obstacles:
+            return False
+        self.obstacles.remove(obstacle)
+        if obstacle.solid:
+            self.grid = Grid(
+                self.width,
+                self.height,
+                GAME_CONFIG["grid_cols"],
+                GAME_CONFIG["grid_rows"],
+            )
+            self._mark_map_on_grid()
+            for enemy in self.enemies:
+                self._assign_path(enemy)
+        return True
 
     def _update_enemies(self):
         for enemy in self.enemies[:]:
@@ -266,7 +292,7 @@ class GameEngine:
         for enemy in self.enemies[:]:
             dist = math.hypot(proj.x - enemy.x, proj.y - enemy.y)
             if dist < (enemy.size + proj_size):
-                enemy.take_damage(1)
+                enemy.take_damage(self.projectile_damage)
                 enemy.knockback_vx = proj.vx * GAME_CONFIG["knockback_force"]
                 enemy.knockback_vy = proj.vy * GAME_CONFIG["knockback_force"]
                 enemy.hit_flash_time = GAME_CONFIG["hit_flash_frames"]
@@ -307,16 +333,24 @@ class GameEngine:
         radius = COIN_CONFIG["collect_hitbox"]
         for coin in self.coins:
             if not coin.collecting and math.hypot(x - coin.x, y - coin.y) <= radius:
-                mx = (coin.x + target_x) / 2
-                my = (coin.y + target_y) / 2
-                dx = target_x - coin.x
-                dy = target_y - coin.y
-                length = max(1.0, math.hypot(dx, dy))
-                sign = random.choice((-1, 1))
-                offset = random.uniform(80, 160)
-                cx = mx + (-dy / length) * sign * offset
-                cy = my + (dx / length) * sign * offset
-                coin.start_collect(target_x, target_y, cx, cy)
+                self._begin_collect(coin, target_x, target_y)
+
+    def auto_collect_coins(self, target_x, target_y):
+        for coin in self.coins:
+            if not coin.collecting:
+                self._begin_collect(coin, target_x, target_y)
+
+    def _begin_collect(self, coin, target_x, target_y):
+        mx = (coin.x + target_x) / 2
+        my = (coin.y + target_y) / 2
+        dx = target_x - coin.x
+        dy = target_y - coin.y
+        length = max(1.0, math.hypot(dx, dy))
+        sign = random.choice((-1, 1))
+        offset = random.uniform(80, 160)
+        cx = mx + (-dy / length) * sign * offset
+        cy = my + (dx / length) * sign * offset
+        coin.start_collect(target_x, target_y, cx, cy)
 
     def _is_out_of_bounds(self, proj):
         return proj.x < 0 or proj.x > self.width or proj.y < 0 or proj.y > self.height
