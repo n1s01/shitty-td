@@ -38,6 +38,7 @@ GAME_CONFIG = {
     "enemy_size": 20,
     "projectile_speed": 8,
     "projectile_size": 4,
+    "projectile_damage": 1,
     "tower_shoot_anim_frames": 14,
     "tower_fire_cooldown": 15,
     "ranged_enemy_range": 400,
@@ -108,3 +109,42 @@ COIN_CONFIG = {
 
 SETTINGS_FILE = "data/settings.json"
 PROFILE_FILE = "data/profile.json"
+
+UPGRADES = {
+    "auto_fire": {
+        "title": "Автовыстрел",
+        "desc": "Зажми ЛКМ — башня стреляет сама",
+        "cost": 300,
+        "max_level": 1,
+        "kind": "side",
+    },
+    "auto_wave": {
+        "title": "Автостарт волны",
+        "desc": "Тумблер у кнопки волны",
+        "cost": 50,
+        "max_level": 1,
+        "kind": "side",
+    },
+    "auto_collect": {
+        "title": "Автосбор монет",
+        "desc": "Монеты собираются сами",
+        "cost": 100,
+        "max_level": 1,
+        "kind": "side",
+    },
+    "break_obstacle": {
+        "title": "Снос препятствия",
+        "desc": "1 снос за забег",
+        "cost": 150,
+        "max_level": 1,
+        "kind": "side",
+    },
+    "tavern": {
+        "title": "Уровень таверны",
+        "desc": "+10% HP, +10% скорострельность, +100% урон",
+        "cost": 500,
+        "max_level": 1,
+        "kind": "main",
+        "effects": {"hp_mult": 0.10, "cooldown_mult": -0.10, "damage_mult": 1.00},
+    },
+}
