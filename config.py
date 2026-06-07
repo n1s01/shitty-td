@@ -107,3 +107,4 @@ COIN_CONFIG = {
 }
 
 SETTINGS_FILE = "data/settings.json"
+PROFILE_FILE = "data/profile.json"

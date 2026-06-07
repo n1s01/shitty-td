@@ -1,6 +1,7 @@
 import pygame
 
 from config import GAME_CONFIG, LOGICAL_RESOLUTION
+from core.profile import load_profile, save_profile
 from scenes.game_scene import GameScene
 from scenes.menu_scene import MenuScene, SettingsScene
 from settings import load_settings
@@ -61,6 +62,18 @@ class App:
         scene.paused = was_paused
         return surface
 
+    def _bank_run_coins(self):
+        game = next(
+            (s for s in (self.scene, self.return_scene) if isinstance(s, GameScene)),
+            None,
+        )
+        if game is None or game.engine.balance <= 0:
+            return
+        profile = load_profile()
+        profile["coins"] += game.engine.balance
+        save_profile(profile)
+        game.engine.balance = 0
+
     def _apply_settings(self):
         self.settings = load_settings()
         self.screen = self._create_screen()
@@ -71,6 +84,7 @@ class App:
         while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    self._bank_run_coins()
                     self.running = False
                     break
                 if event.type == pygame.WINDOWFOCUSLOST:
@@ -100,6 +114,7 @@ class App:
         elif result == "game":
             self.scene = GameScene(self.base_w, self.base_h)
         elif result == "menu":
+            self._bank_run_coins()
             self.scene = MenuScene(self.base_w, self.base_h)
             self.return_scene = None
         elif result == "settings":
