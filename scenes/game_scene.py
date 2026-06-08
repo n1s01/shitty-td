@@ -6,6 +6,8 @@ from config import COIN_CONFIG, COLORS, GAME_CONFIG
 from core.game_engine import GameEngine
 from core.map_generator import GRASS, SHORE, WATER
 from core.models import RangedEnemy
+from core.profile import load_profile
+from core.upgrades import effective_stats
 from view.assets import AssetStore
 from view.fonts import make_font, make_pixel_font
 from view.widgets import Button
@@ -21,7 +23,11 @@ class GameScene:
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.engine = GameEngine(width, height)
+        self.engine = GameEngine(width, height, stats=effective_stats(load_profile()))
+        self.mouse_held = False
+        self.mouse_pos = (0, 0)
+        self.auto_wave_on = False
+        self.break_mode = False
         self.assets = AssetStore()
         self.font = make_font(14)
         self.hud_font = make_font(20)
@@ -74,21 +80,56 @@ class GameScene:
             return self._handle_pause_event(event)
 
         if event.type == pygame.MOUSEMOTION:
+            self.mouse_pos = event.pos
             tx, ty = self._balance_coin_center()
             self.engine.collect_coin_at(event.pos[0], event.pos[1], tx, ty)
             return None
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.engine.wave_ready:
-                if self._wave_button_rect().collidepoint(event.pos):
-                    self.engine.start_wave()
-                    return None
-            if not self.engine.is_game_over:
-                self.engine.shoot_at(event.pos[0], event.pos[1])
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.mouse_held = False
             return None
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            return self._handle_left_click(event.pos)
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if self.break_mode:
+                self.break_mode = False
+                return None
             if self.engine.is_game_over:
                 return "menu"
             self.paused = True
+        return None
+
+    def _handle_left_click(self, pos):
+        if self.break_mode:
+            self._try_break_obstacle(pos)
+            self.break_mode = False
+            return None
+        if (
+            self.engine.obstacle_breaks_left > 0
+            and self._break_button_rect().collidepoint(pos)
+        ):
+            self.break_mode = True
+            return None
+        if self.engine.auto_wave and self._autostart_button_rect().collidepoint(pos):
+            self.auto_wave_on = not self.auto_wave_on
+            return None
+        if self.engine.wave_ready and self._wave_button_rect().collidepoint(pos):
+            self.engine.start_wave()
+            return None
+        if not self.engine.is_game_over:
+            self.mouse_held = True
+            self.engine.shoot_at(pos[0], pos[1])
+        return None
+
+    def _try_break_obstacle(self, pos):
+        obstacle = self._obstacle_at(pos)
+        if obstacle and self.engine.remove_obstacle(obstacle):
+            self.engine.obstacle_breaks_left -= 1
+
+    def _obstacle_at(self, pos):
+        for obstacle in self.engine.obstacles:
+            x, y, w, h = obstacle.rect
+            if pygame.Rect(int(x), int(y), int(w), int(h)).collidepoint(pos):
+                return obstacle
         return None
 
     def _handle_pause_event(self, event):
@@ -113,6 +154,14 @@ class GameScene:
             return
         self.engine.update()
         self._hud_tick += 1
+        if self.engine.is_game_over:
+            return
+        if self.engine.auto_collect:
+            self.engine.auto_collect_coins(*self._balance_coin_center())
+        if self.engine.auto_fire and self.mouse_held:
+            self.engine.shoot_at(*self.mouse_pos)
+        if self.auto_wave_on and self.engine.wave_ready:
+            self.engine.start_wave()
 
     def draw(self, surface):
         self._draw_background(surface)
@@ -140,8 +189,57 @@ class GameScene:
             self._draw_game_over(surface)
         else:
             self._draw_wave_button(surface)
+            self._draw_hud_controls(surface)
+        if self.break_mode:
+            self._draw_break_overlay(surface)
         if self.paused:
             self._draw_pause_menu(surface)
+
+    def _autostart_button_rect(self):
+        wave = self._wave_button_rect()
+        w = 188
+        return pygame.Rect(wave.left - 12 - w, wave.top, w, wave.height)
+
+    def _break_button_rect(self):
+        return pygame.Rect(16, self.height - 16 - 40, 240, 40)
+
+    def _draw_hud_controls(self, surface):
+        if self.engine.auto_wave:
+            label = "Автостарт: вкл" if self.auto_wave_on else "Автостарт: выкл"
+            self._draw_hud_button(
+                surface, self._autostart_button_rect(), label, active=self.auto_wave_on
+            )
+        if self.engine.obstacle_breaks_left > 0:
+            label = f"Снести ({self.engine.obstacle_breaks_left})"
+            self._draw_hud_button(
+                surface, self._break_button_rect(), label, active=self.break_mode
+            )
+
+    def _draw_hud_button(self, surface, rect, text, active=False):
+        pygame.draw.rect(surface, (44, 26, 14), rect, border_radius=8)
+        inner = (120, 150, 70) if active else (96, 60, 33)
+        pygame.draw.rect(surface, inner, rect.inflate(-4, -4), border_radius=6)
+        pygame.draw.rect(surface, (138, 92, 50), rect, width=2, border_radius=8)
+        text_surf, text_rect = self.font.render(text, (235, 220, 170))
+        surface.blit(
+            text_surf,
+            (rect.centerx - text_rect.width // 2, rect.centery - text_rect.height // 2),
+        )
+
+    def _draw_break_overlay(self, surface):
+        for obstacle in self.engine.obstacles:
+            x, y, w, h = obstacle.rect
+            box = pygame.Rect(int(x), int(y), int(w), int(h))
+            color = (
+                (230, 90, 70) if box.collidepoint(self.mouse_pos) else (210, 170, 90)
+            )
+            pygame.draw.rect(surface, color, box, width=2)
+        hint = "Кликни по препятствию  (Esc — отмена)"
+        shadow, _ = self.hud_font.render(hint, (20, 12, 6))
+        main, trect = self.hud_font.render(hint, (245, 230, 180))
+        x = self.width // 2 - trect.width // 2
+        surface.blit(shadow, (x + 2, 26))
+        surface.blit(main, (x, 24))
 
     def _draw_pause_menu(self, surface):
         overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
