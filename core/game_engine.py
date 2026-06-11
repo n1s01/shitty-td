@@ -35,6 +35,7 @@ class GameEngine:
         self.coins = []
         self.effects = []
         self.balance = 0
+        self.kills = 0
         self.grid = Grid(
             width, height, GAME_CONFIG["grid_cols"], GAME_CONFIG["grid_rows"]
         )
@@ -300,6 +301,7 @@ class GameEngine:
                     enemy.reset_cooldown()
                 if enemy.is_dead:
                     self.enemies.remove(enemy)
+                    self.kills += 1
                     for i in range(enemy.coin_value):
                         angle = random.uniform(0, 2 * math.pi)
                         speed = random.uniform(2.0, 4.5)

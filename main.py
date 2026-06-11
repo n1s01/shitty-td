@@ -113,6 +113,7 @@ class App:
         if result == "quit":
             self.running = False
         elif result == "game":
+            self._bank_run_coins()
             self.scene = GameScene(self.base_w, self.base_h)
         elif result == "menu":
             self._bank_run_coins()

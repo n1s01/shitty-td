@@ -32,7 +32,11 @@ class GameScene:
         self.font = make_font(14)
         self.hud_font = make_font(20)
         self.balance_font = make_font(26)
-        self.game_over_font = make_font(48)
+        self.go_title_font = make_pixel_font(72)
+        self.go_label_font = make_pixel_font(20)
+        self.go_value_font = make_pixel_font(30)
+        self.go_button_font = make_pixel_font(24)
+        self.game_over_tick = 0
         self.grass_tiles = [
             "tiles/grass_1.png",
             "tiles/grass_2.png",
@@ -46,6 +50,22 @@ class GameScene:
         self.paused = False
         self.pause_title_font = make_pixel_font(56)
         self._create_pause_menu()
+        self._create_game_over_menu()
+
+    def _create_game_over_menu(self):
+        bw, bh = 360, 56
+        cx = self.width // 2 - bw // 2
+        bottom = self.height // 2 + 235
+        self.retry_btn = Button(
+            (cx, bottom - 150, bw, bh), "Ещё раз", self.go_button_font
+        )
+        self.go_menu_btn = Button(
+            (cx, bottom - 80, bw, bh), "В главное меню", self.go_button_font
+        )
+        self.game_over_buttons = [self.retry_btn, self.go_menu_btn]
+        texture = self.assets.optional_image("tiles/tavern_planks.png")
+        for btn in self.game_over_buttons:
+            btn.texture = texture
 
     def _create_pause_menu(self):
         bw, bh = 340, 56
@@ -78,6 +98,8 @@ class GameScene:
     def handle_event(self, event):
         if self.paused:
             return self._handle_pause_event(event)
+        if self.engine.is_game_over:
+            return self._handle_game_over_event(event)
 
         if event.type == pygame.MOUSEMOTION:
             self.mouse_pos = event.pos
@@ -93,9 +115,22 @@ class GameScene:
             if self.break_mode:
                 self.break_mode = False
                 return None
-            if self.engine.is_game_over:
-                return "menu"
             self.paused = True
+        return None
+
+    def _handle_game_over_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            for btn in self.game_over_buttons:
+                btn.check_hover(event.pos)
+            return None
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.retry_btn.is_clicked(event.pos):
+                return "game"
+            if self.go_menu_btn.is_clicked(event.pos):
+                return "menu"
+            return None
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            return "menu"
         return None
 
     def _handle_left_click(self, pos):
@@ -155,6 +190,7 @@ class GameScene:
         self.engine.update()
         self._hud_tick += 1
         if self.engine.is_game_over:
+            self.game_over_tick += 1
             return
         if self.engine.auto_collect:
             self.engine.auto_collect_coins(*self._balance_coin_center())
@@ -700,12 +736,76 @@ class GameScene:
         surface.blit(text_surf, (tx, ty))
 
     def _draw_game_over(self, surface):
-        text_surf, text_rect = self.game_over_font.render(
-            "ИГРА ОКОНЧЕНА", COLORS["game_over_text"]
+        tick = self.game_over_tick
+
+        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        overlay.fill((8, 4, 4, int(215 * min(1.0, tick / 18))))
+        surface.blit(overlay, (0, 0))
+
+        panel_t = _ease_out(_clamp01((tick - 6) / 22))
+        if panel_t <= 0:
+            return
+
+        panel = pygame.Rect(0, 0, 620, 470)
+        panel.center = (self.width // 2, self.height // 2 + int(40 * (1 - panel_t)))
+        self._draw_go_panel(surface, panel)
+        self._draw_go_title(surface, panel, tick)
+        self._draw_go_stats(surface, panel)
+        if tick > 26:
+            for btn in self.game_over_buttons:
+                btn.draw(surface)
+
+    def _draw_go_panel(self, surface, panel):
+        pygame.draw.rect(surface, (18, 11, 7), panel, border_radius=16)
+        pygame.draw.rect(
+            surface, (52, 31, 18), panel.inflate(-10, -10), border_radius=14
         )
-        x = self.width // 2 - text_rect.width // 2
-        y = self.height // 2 - text_rect.height // 2
-        surface.blit(text_surf, (x, y))
+        pygame.draw.rect(surface, (150, 104, 56), panel, width=4, border_radius=16)
+        divider_y = panel.top + 138
+        pygame.draw.line(
+            surface,
+            (120, 84, 46),
+            (panel.left + 40, divider_y),
+            (panel.right - 40, divider_y),
+            2,
+        )
+
+    def _draw_go_title(self, surface, panel, tick):
+        title_t = _ease_out(_clamp01((tick - 4) / 26))
+        scale = 0.6 + 0.4 * title_t
+        shake = int(7 * (1 - title_t) * math.sin(tick * 0.9))
+        cx = panel.centerx + shake
+        cy = panel.top + 72
+
+        shadow, _ = self.go_title_font.render("ПОРАЖЕНИЕ", (40, 8, 8))
+        main, _ = self.go_title_font.render("ПОРАЖЕНИЕ", (214, 64, 52))
+        for img, dx, dy in ((shadow, 4, 5), (main, 0, 0)):
+            scaled = pygame.transform.rotozoom(img, 0, scale)
+            scaled.set_alpha(int(255 * title_t))
+            rect = scaled.get_rect(center=(cx + dx, cy + dy))
+            surface.blit(scaled, rect)
+
+    def _draw_go_stats(self, surface, panel):
+        rows = [
+            ("Дошёл до волны", self.engine.wave_index + 1),
+            ("Врагов убито", self.engine.kills),
+            ("Монет собрано", self.engine.balance),
+        ]
+        y = panel.top + 168
+        for label, value in rows:
+            lbl, lrect = self.go_label_font.render(label, (198, 176, 140))
+            val, vrect = self.go_value_font.render(str(value), (245, 222, 150))
+            surface.blit(lbl, (panel.left + 56, y + (vrect.height - lrect.height) // 2))
+            surface.blit(val, (panel.right - 56 - vrect.width, y))
+            y += 52
+
+
+def _clamp01(t):
+    return max(0.0, min(1.0, t))
+
+
+def _ease_out(t):
+    return 1 - (1 - t) ** 3
 
 
 def _stable_noise(x, y, salt):
