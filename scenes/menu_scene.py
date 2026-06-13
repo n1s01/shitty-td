@@ -3,7 +3,7 @@ import pygame
 from config import AVAILABLE_RESOLUTIONS, COLORS
 from settings import load_settings, save_settings
 from view.assets import AssetStore
-from view.fonts import make_pixel_font
+from view.fonts import make_ui_font
 from view.widgets import Button
 
 
@@ -55,8 +55,8 @@ class _BaseMenuScene:
 class MenuScene(_BaseMenuScene):
     def __init__(self, width, height):
         super().__init__(width, height)
-        self.font = make_pixel_font(24)
-        self.title_font = make_pixel_font(48)
+        self.font = make_ui_font(24)
+        self.title_font = make_ui_font(48)
         self.margin_x = 150
         self.title_y = height // 2 - 160
         self._create_buttons()
@@ -111,8 +111,8 @@ class SettingsScene(_BaseMenuScene):
     def __init__(self, width, height, background=None):
         super().__init__(width, height)
         self.snapshot = background
-        self.font = make_pixel_font(20)
-        self.title_font = make_pixel_font(34)
+        self.font = make_ui_font(20)
+        self.title_font = make_ui_font(34)
         self.panel_w = 300
         # Поверх игры — по центру, из главного меню — слева (не перекрывая башню)
         if background is not None:

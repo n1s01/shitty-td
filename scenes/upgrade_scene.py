@@ -4,7 +4,7 @@ from config import UPGRADES
 from core import upgrades
 from core.profile import load_profile, save_profile
 from scenes.menu_scene import _BaseMenuScene
-from view.fonts import make_pixel_font
+from view.fonts import make_ui_font
 from view.widgets import Button
 
 CARD_W, CARD_H = 360, 150
@@ -15,9 +15,9 @@ class UpgradeScene(_BaseMenuScene):
     def __init__(self, width, height):
         super().__init__(width, height)
         self.profile = load_profile()
-        self.title_font = make_pixel_font(44)
-        self.card_font = make_pixel_font(22)
-        self.small_font = make_pixel_font(16)
+        self.title_font = make_ui_font(46)
+        self.card_font = make_ui_font(26)
+        self.small_font = make_ui_font(20)
         self._mouse = (0, 0)
         self.cards = self._layout()
         self.back_btn = Button(

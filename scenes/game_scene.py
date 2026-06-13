@@ -9,7 +9,7 @@ from core.models import RangedEnemy
 from core.profile import load_profile
 from core.upgrades import effective_stats
 from view.assets import AssetStore
-from view.fonts import make_font, make_pixel_font
+from view.fonts import make_font, make_ui_font
 from view.widgets import Button
 
 BIOME_FALLBACK = {
@@ -32,10 +32,10 @@ class GameScene:
         self.font = make_font(14)
         self.hud_font = make_font(20)
         self.balance_font = make_font(26)
-        self.go_title_font = make_pixel_font(72)
-        self.go_label_font = make_pixel_font(20)
-        self.go_value_font = make_pixel_font(30)
-        self.go_button_font = make_pixel_font(24)
+        self.go_title_font = make_ui_font(72)
+        self.go_label_font = make_ui_font(20)
+        self.go_value_font = make_ui_font(30)
+        self.go_button_font = make_ui_font(24)
         self.game_over_tick = 0
         self.grass_tiles = [
             "tiles/grass_1.png",
@@ -48,7 +48,7 @@ class GameScene:
         self._hud_tick = 0
 
         self.paused = False
-        self.pause_title_font = make_pixel_font(56)
+        self.pause_title_font = make_ui_font(56)
         self._create_pause_menu()
         self._create_game_over_menu()
 
@@ -72,7 +72,7 @@ class GameScene:
         cx = self.width // 2 - bw // 2
         cy = self.height // 2 - 40
         gap = 76
-        pause_font = make_pixel_font(24)
+        pause_font = make_ui_font(24)
         self.resume_btn = Button((cx, cy, bw, bh), "Продолжить", pause_font)
         self.pause_settings_btn = Button(
             (cx, cy + gap, bw, bh), "Настройки", pause_font

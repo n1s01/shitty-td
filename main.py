@@ -104,7 +104,14 @@ class App:
         pygame.quit()
 
     def _present(self):
-        scaled = pygame.transform.scale(self.canvas, (self.view_w, self.view_h))
+        if (self.view_w, self.view_h) == (self.base_w, self.base_h):
+            scaled = self.canvas
+        elif self.view_w < self.base_w:
+            scaled = pygame.transform.smoothscale(
+                self.canvas, (self.view_w, self.view_h)
+            )
+        else:
+            scaled = pygame.transform.scale(self.canvas, (self.view_w, self.view_h))
         self.screen.fill((0, 0, 0))
         self.screen.blit(scaled, (self.offset_x, self.offset_y))
         pygame.display.flip()
