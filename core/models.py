@@ -138,6 +138,14 @@ class Enemy:
     def is_dead(self):
         return self.hp <= 0
 
+    def act(self, engine):
+        if engine.tower_contact(self):
+            engine.damage_tower(self.damage)
+            engine.enemies.remove(self)
+
+    def on_hit(self):
+        pass
+
 
 class RangedEnemy(Enemy):
     coin_value = 2
@@ -168,6 +176,16 @@ class RangedEnemy(Enemy):
 
     def in_range(self, target_x, target_y):
         return self.distance_to(target_x, target_y) <= self.attack_range
+
+    def act(self, engine):
+        if self.in_range(engine.tower.x, engine.tower.y):
+            self.update_cooldown()
+            if self.can_fire():
+                engine.fire_enemy_projectile(self)
+                self.reset_cooldown()
+
+    def on_hit(self):
+        self.reset_cooldown()
 
 
 class Coin:

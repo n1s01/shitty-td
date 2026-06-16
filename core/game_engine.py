@@ -214,23 +214,19 @@ class GameEngine:
     def _update_enemies(self):
         for enemy in self.enemies[:]:
             enemy.move_towards(self.tower.x, self.tower.y)
+            enemy.act(self)
 
-            if isinstance(enemy, RangedEnemy):
-                if enemy.in_range(self.tower.x, self.tower.y):
-                    enemy.update_cooldown()
-                    if enemy.can_fire():
-                        self._enemy_shoot(enemy)
-                        enemy.reset_cooldown()
-            else:
-                if _circle_touches_rect(
-                    enemy.x, enemy.y, enemy.size / 2, self.tower.hitbox_rect
-                ):
-                    self.tower.take_damage(enemy.damage)
-                    self.enemies.remove(enemy)
-                    if self.tower.is_destroyed:
-                        self.is_game_over = True
+    def damage_tower(self, amount):
+        self.tower.take_damage(amount)
+        if self.tower.is_destroyed:
+            self.is_game_over = True
 
-    def _enemy_shoot(self, enemy):
+    def tower_contact(self, enemy):
+        return _circle_touches_rect(
+            enemy.x, enemy.y, enemy.size / 2, self.tower.hitbox_rect
+        )
+
+    def fire_enemy_projectile(self, enemy):
         dx = self.tower.x - enemy.x
         dy = self.tower.y - enemy.y
         dist = math.hypot(dx, dy)
@@ -250,10 +246,8 @@ class GameEngine:
         for proj in self.enemy_projectiles[:]:
             proj.update()
             if _point_in_rect(proj.x, proj.y, self.tower.hitbox_rect):
-                self.tower.take_damage(proj.damage)
+                self.damage_tower(proj.damage)
                 self.enemy_projectiles.remove(proj)
-                if self.tower.is_destroyed:
-                    self.is_game_over = True
             elif self._is_out_of_bounds(proj):
                 self.enemy_projectiles.remove(proj)
 
@@ -297,8 +291,7 @@ class GameEngine:
                 enemy.knockback_vx = proj.vx * GAME_CONFIG["knockback_force"]
                 enemy.knockback_vy = proj.vy * GAME_CONFIG["knockback_force"]
                 enemy.hit_flash_time = GAME_CONFIG["hit_flash_frames"]
-                if isinstance(enemy, RangedEnemy):
-                    enemy.reset_cooldown()
+                enemy.on_hit()
                 if enemy.is_dead:
                     self.enemies.remove(enemy)
                     self.kills += 1
