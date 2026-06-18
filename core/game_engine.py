@@ -84,6 +84,7 @@ class GameEngine:
                     vx=dx / dist,
                     vy=dy / dist,
                     speed=GAME_CONFIG["projectile_speed"],
+                    damage=self.projectile_damage,
                 )
             )
             self.tower_shoot_timer = GAME_CONFIG["tower_shoot_anim_frames"]
@@ -287,7 +288,7 @@ class GameEngine:
         for enemy in self.enemies[:]:
             dist = math.hypot(proj.x - enemy.x, proj.y - enemy.y)
             if dist < (enemy.size + proj_size):
-                enemy.take_damage(self.projectile_damage)
+                enemy.take_damage(proj.damage)
                 enemy.knockback_vx = proj.vx * GAME_CONFIG["knockback_force"]
                 enemy.knockback_vy = proj.vy * GAME_CONFIG["knockback_force"]
                 enemy.hit_flash_time = GAME_CONFIG["hit_flash_frames"]

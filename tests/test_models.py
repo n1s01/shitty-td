@@ -195,7 +195,7 @@ def test_projectile_moves_by_velocity_times_speed():
 
 
 def test_projectile_diagonal():
-    p = Projectile(0, 0, vx=0, vy=-1, speed=4)
+    p = Projectile(0, 0, vx=0, vy=-1, speed=4, damage=1)
     p.update()
     assert p.y == -4
 

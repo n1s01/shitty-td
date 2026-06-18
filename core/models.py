@@ -191,7 +191,7 @@ class RangedEnemy(Enemy):
 class Coin:
     _COLLECT_SPEED = 16
 
-    def __init__(self, x, y, value, vx=0, vy=0, anim_phase=0):
+    def __init__(self, x, y, value, vx: float = 0, vy: float = 0, anim_phase=0):
         self.x = x
         self.y = y
         self.value = value
@@ -248,7 +248,7 @@ class Coin:
 
 
 class Projectile:
-    def __init__(self, x, y, vx, vy, speed, damage=0):
+    def __init__(self, x, y, vx, vy, speed, damage):
         self.x = x
         self.y = y
         self.vx = vx
