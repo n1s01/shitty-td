@@ -1,3 +1,5 @@
+"""Загрузка и сохранение пользовательских настроек экрана."""
+
 import json
 from pathlib import Path
 
@@ -5,6 +7,15 @@ from config import AVAILABLE_RESOLUTIONS, BASE_RESOLUTION, SETTINGS_FILE
 
 
 def load_settings():
+    """Читает настройки из файла, подставляя значения по умолчанию.
+
+    При отсутствии или повреждении файла, а также при недопустимом
+    разрешении возвращаются безопасные значения по умолчанию.
+
+    Returns:
+        Словарь с ключами "is_fullscreen" (bool) и "resolution"
+        (кортеж ширина-высота).
+    """
     path = Path(SETTINGS_FILE)
     if not path.exists():
         return {"is_fullscreen": True, "resolution": BASE_RESOLUTION}
@@ -29,6 +40,11 @@ def load_settings():
 
 
 def save_settings(settings):
+    """Сохраняет настройки в файл в формате JSON.
+
+    Args:
+        settings: словарь с ключами "is_fullscreen" и "resolution".
+    """
     path = Path(SETTINGS_FILE)
     path.parent.mkdir(exist_ok=True)
     data = {

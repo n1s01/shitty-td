@@ -16,9 +16,6 @@ from core.models import (
 )
 
 
-# --- Башня ---------------------------------------------------------------
-
-
 def test_tower_starts_full_hp():
     tower = Tower(x=0, y=0, size=50, max_hp=100)
     assert tower.hp == 100
@@ -50,9 +47,6 @@ def test_tower_hitbox_rect_centered():
     assert (x, y) == (90, 90)  # центр 100,100 минус половина 10
 
 
-# --- Враг ----------------------------------------------------------------
-
-
 def test_enemy_take_damage_and_death():
     enemy = Enemy(0, 0, size=20, hp=3, speed=1, damage=1)
     enemy.take_damage(1)
@@ -76,7 +70,7 @@ def test_enemy_moves_towards_target():
 
 def test_enemy_snaps_to_close_target():
     enemy = Enemy(0, 0, 20, 3, speed=5, damage=1)
-    # Цель ближе, чем шаг скорости — встаёт точно в неё.
+    # Цель ближе, чем шаг скорости - встаёт точно в неё.
     enemy.move_towards(1, 0)
     assert enemy.x == pytest.approx(1)
 
@@ -105,9 +99,6 @@ def test_hit_flash_counts_down():
     enemy.hit_flash_time = 3
     enemy.tick_status()
     assert enemy.hit_flash_time == 2
-
-
-# --- Дальнобойный враг ---------------------------------------------------
 
 
 def test_ranged_enemy_stops_in_range():
@@ -184,9 +175,6 @@ def test_ranged_enemy_gives_more_coins():
     assert RangedEnemy.coin_value > Enemy.coin_value
 
 
-# --- Снаряд --------------------------------------------------------------
-
-
 def test_projectile_moves_by_velocity_times_speed():
     p = Projectile(0, 0, vx=1, vy=0, speed=8, damage=1)
     p.update()
@@ -198,9 +186,6 @@ def test_projectile_diagonal():
     p = Projectile(0, 0, vx=0, vy=-1, speed=4, damage=1)
     p.update()
     assert p.y == -4
-
-
-# --- Монета --------------------------------------------------------------
 
 
 def test_coin_drops_then_idles():
@@ -227,9 +212,6 @@ def test_coin_collect_animation_finishes():
     assert coin.pending_collect
     assert coin.x == pytest.approx(100)
     assert coin.y == pytest.approx(100)
-
-
-# --- Препятствие ---------------------------------------------------------
 
 
 def test_obstacle_rect_centered():

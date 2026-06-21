@@ -1,3 +1,5 @@
+"""Процедурная генерация карты: вода, берег, декор и препятствия."""
+
 import math
 import random
 
@@ -11,7 +13,19 @@ SHORE = 2
 
 
 class GeneratedMap:
+    """Готовая карта: биомы клеток, декор и препятствия."""
+
     def __init__(self, cols, rows, tile_size, biomes, decor, obstacles):
+        """Сохраняет результат генерации карты.
+
+        Args:
+            cols: число колонок карты.
+            rows: число строк карты.
+            tile_size: размер тайла в пикселях.
+            biomes: двумерный список биомов (GRASS/WATER/SHORE).
+            decor: список декоративных объектов.
+            obstacles: список препятствий (объекты Obstacle).
+        """
         self.cols = cols
         self.rows = rows
         self.tile_size = tile_size
@@ -21,7 +35,21 @@ class GeneratedMap:
 
 
 class MapGenerator:
+    """Строит карту вокруг башни на основе шума Перлина.
+
+    Генерирует водоёмы, гарантирует проходимость до башни, добавляет
+    берега, декор и препятствия, оставляя безопасную зону у башни.
+    """
+
     def __init__(self, width, height, tower_x, tower_y):
+        """Готовит параметры генерации под размер поля и башню.
+
+        Args:
+            width: ширина поля в пикселях.
+            height: высота поля в пикселях.
+            tower_x: координата башни по горизонтали.
+            tower_y: координата башни по вертикали.
+        """
         self.width = width
         self.height = height
         self.tower_x = tower_x
@@ -37,6 +65,11 @@ class MapGenerator:
         self._base_seed = random.randint(0, 2**31 - 1)
 
     def generate(self):
+        """Генерирует карту, перебирая попытки до приемлемого водного покрытия.
+
+        Returns:
+            Объект GeneratedMap с биомами, декором и препятствиями.
+        """
         attempts = GAME_CONFIG["map_gen_attempts"]
         reject = GAME_CONFIG["water_reject_fraction"]
 
@@ -61,6 +94,14 @@ class MapGenerator:
         )
 
     def _build_water(self, seed):
+        """Расставляет воду по карте по порогу значения шума.
+
+        Args:
+            seed: зерно генератора шума.
+
+        Returns:
+            Двумерный список биомов с водой (WATER) и травой (GRASS).
+        """
         noise = PerlinNoise(seed)
         scale = GAME_CONFIG["water_noise_scale"]
         octaves = GAME_CONFIG["noise_octaves"]
@@ -95,6 +136,11 @@ class MapGenerator:
         return biomes
 
     def _enforce_connectivity(self, biomes):
+        """Заливает водой участки суши, недостижимые от башни.
+
+        Args:
+            biomes: двумерный список биомов (изменяется на месте).
+        """
         tcol, trow = self._tower_tile()
         reachable = [[False] * self.cols for _ in range(self.rows)]
         stack = [(tcol, trow)]
@@ -114,6 +160,11 @@ class MapGenerator:
                     biomes[row][col] = WATER
 
     def _keep_largest_lake(self, biomes):
+        """Оставляет только самый большой водоём, остальные - травой.
+
+        Args:
+            biomes: двумерный список биомов (изменяется на месте).
+        """
         seen = [[False] * self.cols for _ in range(self.rows)]
         components = []
         for row in range(self.rows):
@@ -144,11 +195,24 @@ class MapGenerator:
                 biomes[r][c] = GRASS
 
     def _water_fraction(self, biomes):
+        """Возвращает долю клеток, занятых водой.
+
+        Args:
+            biomes: двумерный список биомов.
+
+        Returns:
+            Доля воды от 0.0 до 1.0.
+        """
         total = self.cols * self.rows
         water = sum(row.count(WATER) for row in biomes)
         return water / total if total else 0.0
 
     def _derive_shore(self, biomes):
+        """Помечает клетки травы у воды как берег (SHORE).
+
+        Args:
+            biomes: двумерный список биомов (изменяется на месте).
+        """
         shore = []
         for row in range(self.rows):
             for col in range(self.cols):
@@ -160,6 +224,16 @@ class MapGenerator:
             biomes[row][col] = SHORE
 
     def _touches_water(self, biomes, col, row):
+        """Проверяет, граничит ли клетка с водой по 8 направлениям.
+
+        Args:
+            biomes: двумерный список биомов.
+            col: номер колонки клетки.
+            row: номер строки клетки.
+
+        Returns:
+            True, если рядом есть вода, иначе False.
+        """
         for dc in (-1, 0, 1):
             for dr in (-1, 0, 1):
                 if dc == 0 and dr == 0:
@@ -171,6 +245,16 @@ class MapGenerator:
         return False
 
     def _place_decor(self, biomes, seed, rng):
+        """Расставляет декор по биомам с учётом карты влажности.
+
+        Args:
+            biomes: двумерный список биомов.
+            seed: зерно для шума влажности.
+            rng: генератор случайных чисел.
+
+        Returns:
+            Список декоративных объектов в виде словарей.
+        """
         decor = []
         ts = self.tile_size
 
@@ -243,6 +327,18 @@ class MapGenerator:
         return decor
 
     def _decor_item(self, asset, cx, cy, rng, ts):
+        """Создаёт декоративный объект со случайным смещением.
+
+        Args:
+            asset: путь к изображению декора.
+            cx: координата центра клетки по горизонтали.
+            cy: координата центра клетки по вертикали.
+            rng: генератор случайных чисел.
+            ts: размер тайла (определяет величину смещения).
+
+        Returns:
+            Словарь с ключами "asset", "x" и "y".
+        """
         jitter = ts * 0.3
         return {
             "asset": asset,
@@ -251,6 +347,15 @@ class MapGenerator:
         }
 
     def _place_obstacles(self, biomes, rng):
+        """Раскидывает препятствия по суше вне безопасной зоны.
+
+        Args:
+            biomes: двумерный список биомов.
+            rng: генератор случайных чисел.
+
+        Returns:
+            Список препятствий (объекты Obstacle).
+        """
         specs = GAME_CONFIG["land_obstacles"]
         target = GAME_CONFIG["land_obstacle_count"]
         min_dist = GAME_CONFIG["land_obstacle_min_dist"]
@@ -281,6 +386,16 @@ class MapGenerator:
         return obstacles
 
     def _biome_at(self, biomes, x, y):
+        """Возвращает биом клетки по координатам мира.
+
+        Args:
+            biomes: двумерный список биомов.
+            x: координата по горизонтали в пикселях.
+            y: координата по вертикали в пикселях.
+
+        Returns:
+            Код биома (GRASS, WATER или SHORE).
+        """
         col = int(x / self.tile_size)
         row = int(y / self.tile_size)
         col = max(0, min(col, self.cols - 1))
@@ -288,6 +403,11 @@ class MapGenerator:
         return biomes[row][col]
 
     def _tower_tile(self):
+        """Возвращает клетку (col, row), в которой стоит башня.
+
+        Returns:
+            Кортеж (col, row), обрезанный до границ карты.
+        """
         col = int(self.tower_x / self.tile_size)
         row = int(self.tower_y / self.tile_size)
         col = max(0, min(col, self.cols - 1))
@@ -295,12 +415,39 @@ class MapGenerator:
         return col, row
 
     def _is_border_tile(self, col, row):
+        """Проверяет, лежит ли клетка на краю карты.
+
+        Args:
+            col: номер колонки.
+            row: номер строки.
+
+        Returns:
+            True, если клетка на границе карты, иначе False.
+        """
         return col == 0 or row == 0 or col == self.cols - 1 or row == self.rows - 1
 
     def _is_safe_tile(self, col, row):
+        """Проверяет, попадает ли клетка в безопасную зону у башни.
+
+        Args:
+            col: номер колонки.
+            row: номер строки.
+
+        Returns:
+            True, если центр клетки в радиусе безопасной зоны.
+        """
         cx = col * self.tile_size + self.tile_size / 2
         cy = row * self.tile_size + self.tile_size / 2
         return self._is_safe_world(cx, cy)
 
     def _is_safe_world(self, x, y):
+        """Проверяет, попадает ли точка мира в безопасную зону у башни.
+
+        Args:
+            x: координата по горизонтали в пикселях.
+            y: координата по вертикали в пикселях.
+
+        Returns:
+            True, если точка ближе safe_radius к башне, иначе False.
+        """
         return math.hypot(x - self.tower_x, y - self.tower_y) < self.safe_radius

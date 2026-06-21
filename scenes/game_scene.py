@@ -1,3 +1,5 @@
+"""Игровая сцена: отрисовка боя, ввод игрока, пауза и экран поражения."""
+
 import math
 
 import pygame
@@ -20,7 +22,19 @@ BIOME_FALLBACK = {
 
 
 class GameScene:
+    """Сцена боя: связывает движок игры, ввод и всю отрисовку.
+
+    Обрабатывает события мыши и клавиатуры, обновляет движок, рисует
+    карту, башню, врагов, монеты, интерфейс, паузу и экран поражения.
+    """
+
     def __init__(self, width, height):
+        """Создаёт движок партии, шрифты и меню паузы/поражения.
+
+        Args:
+            width: ширина экрана в пикселях.
+            height: высота экрана в пикселях.
+        """
         self.width = width
         self.height = height
         self.engine = GameEngine(width, height, stats=effective_stats(load_profile()))
@@ -53,6 +67,7 @@ class GameScene:
         self._create_game_over_menu()
 
     def _create_game_over_menu(self):
+        """Создаёт кнопки экрана поражения и задаёт им текстуру."""
         bw, bh = 360, 56
         cx = self.width // 2 - bw // 2
         bottom = self.height // 2 + 235
@@ -68,6 +83,7 @@ class GameScene:
             btn.texture = texture
 
     def _create_pause_menu(self):
+        """Создаёт кнопки меню паузы и задаёт им текстуру."""
         bw, bh = 340, 56
         cx = self.width // 2 - bw // 2
         cy = self.height // 2 - 40
@@ -90,12 +106,28 @@ class GameScene:
             btn.texture = texture
 
     def _wave_button_rect(self):
+        """Возвращает прямоугольник кнопки запуска волны.
+
+        Returns:
+            pygame.Rect кнопки в правом нижнем углу экрана.
+        """
         img = self.assets.optional_image("ui/wave_button.png")
         w = img.get_width() if img else 120
         h = img.get_height() if img else 36
         return pygame.Rect(self.width - w - 16, self.height - h - 16, w, h)
 
     def handle_event(self, event):
+        """Обрабатывает событие в зависимости от состояния сцены.
+
+        Делегирует обработку меню паузы или экрану поражения, иначе
+        реагирует на движение мыши, выстрелы и клавишу Esc.
+
+        Args:
+            event: событие pygame.
+
+        Returns:
+            Имя перехода между сценами или None, если перехода нет.
+        """
         if self.paused:
             return self._handle_pause_event(event)
         if self.engine.is_game_over:
@@ -119,6 +151,14 @@ class GameScene:
         return None
 
     def _handle_game_over_event(self, event):
+        """Обрабатывает события на экране поражения.
+
+        Args:
+            event: событие pygame.
+
+        Returns:
+            "game" для продолжения, "menu" для выхода или None.
+        """
         if event.type == pygame.MOUSEMOTION:
             for btn in self.game_over_buttons:
                 btn.check_hover(event.pos)
@@ -134,6 +174,14 @@ class GameScene:
         return None
 
     def _handle_left_click(self, pos):
+        """Обрабатывает левый клик: снос, автостарт, волна или выстрел.
+
+        Args:
+            pos: координаты клика (x, y).
+
+        Returns:
+            None (переходов между сценами здесь нет).
+        """
         if self.break_mode:
             self._try_break_obstacle(pos)
             self.break_mode = False
@@ -156,11 +204,24 @@ class GameScene:
         return None
 
     def _try_break_obstacle(self, pos):
+        """Сносит препятствие под курсором, тратя одну попытку.
+
+        Args:
+            pos: координаты клика (x, y).
+        """
         obstacle = self._obstacle_at(pos)
         if obstacle and self.engine.remove_obstacle(obstacle):
             self.engine.obstacle_breaks_left -= 1
 
     def _obstacle_at(self, pos):
+        """Находит препятствие под указанной точкой.
+
+        Args:
+            pos: координаты точки (x, y).
+
+        Returns:
+            Препятствие под точкой или None, если его там нет.
+        """
         for obstacle in self.engine.obstacles:
             x, y, w, h = obstacle.rect
             if pygame.Rect(int(x), int(y), int(w), int(h)).collidepoint(pos):
@@ -168,6 +229,14 @@ class GameScene:
         return None
 
     def _handle_pause_event(self, event):
+        """Обрабатывает события меню паузы.
+
+        Args:
+            event: событие pygame.
+
+        Returns:
+            "settings" или "menu" при выборе пункта, иначе None.
+        """
         if event.type == pygame.MOUSEMOTION:
             for btn in self.pause_buttons:
                 btn.check_hover(event.pos)
@@ -185,6 +254,7 @@ class GameScene:
         return None
 
     def update(self):
+        """Обновляет движок и автоматические действия за один кадр."""
         if self.paused:
             return
         self.engine.update()
@@ -200,6 +270,11 @@ class GameScene:
             self.engine.start_wave()
 
     def draw(self, surface):
+        """Рисует кадр: карту, объекты, интерфейс и оверлеи.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         self._draw_background(surface)
         self._draw_obstacles(surface)
         self._draw_tower(surface)
@@ -232,14 +307,29 @@ class GameScene:
             self._draw_pause_menu(surface)
 
     def _autostart_button_rect(self):
+        """Возвращает прямоугольник кнопки автостарта волн.
+
+        Returns:
+            pygame.Rect слева от кнопки запуска волны.
+        """
         wave = self._wave_button_rect()
         w = 188
         return pygame.Rect(wave.left - 12 - w, wave.top, w, wave.height)
 
     def _break_button_rect(self):
+        """Возвращает прямоугольник кнопки сноса препятствий.
+
+        Returns:
+            pygame.Rect кнопки в левом нижнем углу экрана.
+        """
         return pygame.Rect(16, self.height - 16 - 40, 240, 40)
 
     def _draw_hud_controls(self, surface):
+        """Рисует кнопки автостарта и сноса, если они доступны.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         if self.engine.auto_wave:
             label = "Автостарт: вкл" if self.auto_wave_on else "Автостарт: выкл"
             self._draw_hud_button(
@@ -252,6 +342,14 @@ class GameScene:
             )
 
     def _draw_hud_button(self, surface, rect, text, active=False):
+        """Рисует кнопку интерфейса с подписью по центру.
+
+        Args:
+            surface: поверхность для отрисовки.
+            rect: прямоугольник кнопки.
+            text: подпись на кнопке.
+            active: True, если кнопка в активном состоянии.
+        """
         pygame.draw.rect(surface, (44, 26, 14), rect, border_radius=8)
         inner = (120, 150, 70) if active else (96, 60, 33)
         pygame.draw.rect(surface, inner, rect.inflate(-4, -4), border_radius=6)
@@ -263,6 +361,11 @@ class GameScene:
         )
 
     def _draw_break_overlay(self, surface):
+        """Подсвечивает препятствия и подсказку в режиме сноса.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         for obstacle in self.engine.obstacles:
             x, y, w, h = obstacle.rect
             box = pygame.Rect(int(x), int(y), int(w), int(h))
@@ -270,7 +373,7 @@ class GameScene:
                 (230, 90, 70) if box.collidepoint(self.mouse_pos) else (210, 170, 90)
             )
             pygame.draw.rect(surface, color, box, width=2)
-        hint = "Кликни по препятствию  (Esc — отмена)"
+        hint = "Кликни по препятствию  (Esc - отмена)"
         shadow, _ = self.hud_font.render(hint, (20, 12, 6))
         main, trect = self.hud_font.render(hint, (245, 230, 180))
         x = self.width // 2 - trect.width // 2
@@ -278,6 +381,11 @@ class GameScene:
         surface.blit(main, (x, 24))
 
     def _draw_pause_menu(self, surface):
+        """Рисует затемнение, заголовок и кнопки меню паузы.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
         overlay.fill((12, 10, 8, 170))
         surface.blit(overlay, (0, 0))
@@ -294,6 +402,11 @@ class GameScene:
             btn.draw(surface)
 
     def _draw_background(self, surface):
+        """Рисует тайлы суши, воду, декор и грядку у башни.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         ts = self.engine.tile_size
         grass = [self.assets.optional_image(p) for p in self.grass_tiles]
         grass = [g for g in grass if g is not None]
@@ -319,6 +432,18 @@ class GameScene:
         self._draw_tower_garden(surface)
 
     def _tile_image(self, biome, col, row, grass, sand):
+        """Подбирает изображение тайла для клетки суши.
+
+        Args:
+            biome: код биома клетки.
+            col: номер колонки.
+            row: номер строки.
+            grass: список изображений травы.
+            sand: изображение песка для берега.
+
+        Returns:
+            Поверхность тайла или None, если изображений нет.
+        """
         if biome == SHORE:
             return sand
         if grass:
@@ -326,6 +451,11 @@ class GameScene:
         return None
 
     def _build_water_surface(self):
+        """Строит статичную поверхность воды на основе шума.
+
+        Returns:
+            Поверхность pygame с прорисованной водой и бликами.
+        """
         from core.perlin_noise import PerlinNoise
 
         surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
@@ -367,6 +497,11 @@ class GameScene:
         return surf
 
     def _draw_decor(self, surface):
+        """Рисует декоративные объекты карты.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         for item in self.engine.decor:
             img = self.assets.optional_image(item["asset"])
             if img is None:
@@ -375,6 +510,11 @@ class GameScene:
             surface.blit(img, rect)
 
     def _draw_tower_garden(self, surface):
+        """Рисует вспаханную грядку с забором вокруг башни.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         tower = self.engine.tower
         garden = pygame.Rect(0, 0, tower.hitbox_size, tower.hitbox_size)
         garden.center = (int(tower.x), int(tower.y))
@@ -393,6 +533,12 @@ class GameScene:
         self._draw_garden_fence(surface, garden)
 
     def _draw_garden_fence(self, surface, garden):
+        """Рисует деревянный забор по периметру грядки.
+
+        Args:
+            surface: поверхность для отрисовки.
+            garden: прямоугольник грядки.
+        """
         rail_dark = (52, 31, 22)
         rail_mid = (107, 66, 37)
         rail_light = (157, 103, 52)
@@ -421,6 +567,16 @@ class GameScene:
             )
 
     def _draw_fence_post(self, surface, x, y, dark, mid, light):
+        """Рисует один столбик забора с бликом.
+
+        Args:
+            surface: поверхность для отрисовки.
+            x: координата центра столбика по горизонтали.
+            y: координата центра столбика по вертикали.
+            dark: тёмный цвет контура.
+            mid: основной цвет столбика.
+            light: цвет блика.
+        """
         rect = pygame.Rect(0, 0, 10, 14)
         rect.center = (x, y)
         pygame.draw.rect(surface, dark, rect)
@@ -428,6 +584,11 @@ class GameScene:
         pygame.draw.rect(surface, light, (rect.left + 3, rect.top + 2, 3, 2))
 
     def _draw_obstacles(self, surface):
+        """Рисует препятствия карты их спрайтами или заглушкой.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         for obstacle in self.engine.obstacles:
             img = self.assets.optional_image(
                 obstacle.asset, (int(obstacle.width), int(obstacle.height))
@@ -440,6 +601,11 @@ class GameScene:
                 pygame.draw.rect(surface, (81, 69, 45), rect)
 
     def _draw_tower(self, surface):
+        """Рисует башню, её хранителя и полосу здоровья.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         tower = self.engine.tower
         half = tower.size // 2
         rect = pygame.Rect(
@@ -458,6 +624,11 @@ class GameScene:
         self._draw_tower_hp(surface)
 
     def _draw_tower_hp(self, surface):
+        """Рисует панель здоровья башни и полосу перезарядки.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         tower = self.engine.tower
         bar_w, bar_h = 140, 18
         cx = int(tower.x)
@@ -502,6 +673,12 @@ class GameScene:
         self._draw_reload_bar(surface, panel)
 
     def _draw_reload_bar(self, surface, hp_panel):
+        """Рисует тонкую полосу перезарядки под полосой здоровья.
+
+        Args:
+            surface: поверхность для отрисовки.
+            hp_panel: прямоугольник панели здоровья.
+        """
         progress = self.engine.reload_progress
         if progress >= 1.0:
             return
@@ -519,6 +696,11 @@ class GameScene:
             )
 
     def _draw_tower_keeper(self, surface):
+        """Рисует фигуру хранителя башни с учётом стрельбы.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         timer = self.engine.tower_shoot_timer
         anim_frames = GAME_CONFIG["tower_shoot_anim_frames"]
         if timer <= 0:
@@ -541,6 +723,11 @@ class GameScene:
         surface.blit(keeper, rect)
 
     def _draw_enemies(self, surface):
+        """Рисует всех врагов, вспышку от попаданий и их здоровье.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         for enemy in self.engine.enemies:
             pos = (int(enemy.x), int(enemy.y))
             r = enemy.size // 2
@@ -571,6 +758,13 @@ class GameScene:
                 self._draw_enemy_hp(surface, enemy, r)
 
     def _draw_enemy_hp(self, surface, enemy, r):
+        """Рисует полосу здоровья над раненым врагом.
+
+        Args:
+            surface: поверхность для отрисовки.
+            enemy: враг, чьё здоровье рисуется.
+            r: радиус врага для расчёта позиции полосы.
+        """
         bar_w = enemy.size
         bar_h = 4
         x = int(enemy.x) - bar_w // 2
@@ -584,6 +778,15 @@ class GameScene:
     def _draw_projectile_list(
         self, surface, projectiles, sprite_key, fallback_color, tail_length
     ):
+        """Рисует список снарядов спрайтом или линией-шлейфом.
+
+        Args:
+            surface: поверхность для отрисовки.
+            projectiles: список снарядов.
+            sprite_key: путь к спрайту снаряда.
+            fallback_color: цвет линии, если спрайта нет.
+            tail_length: длина линии-шлейфа в пикселях.
+        """
         sprite = self.assets.optional_image(sprite_key)
         for proj in projectiles:
             cx, cy = int(proj.x), int(proj.y)
@@ -597,6 +800,11 @@ class GameScene:
                 pygame.draw.line(surface, fallback_color, (cx, cy), (end_x, end_y), 2)
 
     def _draw_effects(self, surface):
+        """Рисует частицы эффектов разлёта с угасанием.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         for effect in self.engine.effects:
             fade = 1.0 - effect.progress
             size = max(1, int(4 * fade) + 1)
@@ -617,10 +825,20 @@ class GameScene:
     _BALANCE_H = 40
 
     def _balance_coin_center(self):
+        """Возвращает центр иконки монеты в счётчике баланса.
+
+        Returns:
+            Кортеж (x, y) - точка, к которой летят собираемые монеты.
+        """
         x, y = self._BALANCE_POS
         return x + self._BALANCE_PAD + self._BALANCE_ICON // 2, y + self._BALANCE_H // 2
 
     def _draw_coins(self, surface):
+        """Рисует монеты: летящие - спрайтом, лежащие - вращением.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         r = COIN_CONFIG["size"]
         color = COIN_CONFIG["color"]
         img_base = self.assets.optional_image("sprites/coin.png", (r * 2, r * 2))
@@ -635,6 +853,16 @@ class GameScene:
                 self._draw_spinning_coin(surface, cx, cy, r, coin.anim_tick)
 
     def _draw_spinning_coin(self, surface, cx, cy, base_r, tick, shadow=True):
+        """Рисует монету с анимацией покачивания и вращения.
+
+        Args:
+            surface: поверхность для отрисовки.
+            cx: координата центра по горизонтали.
+            cy: координата центра по вертикали.
+            base_r: базовый радиус монеты.
+            tick: счётчик кадров для фазы анимации.
+            shadow: True, чтобы рисовать тень под монетой.
+        """
         color = COIN_CONFIG["color"]
         d = base_r * 2
         img_base = self.assets.optional_image("sprites/coin.png", (d, d))
@@ -655,6 +883,16 @@ class GameScene:
             self._draw_coin_shape(surface, cx, cy, spin_w, d, color)
 
     def _draw_coin_shape(self, surface, cx, cy, w, h, color):
+        """Рисует монету фигурами, когда спрайт недоступен.
+
+        Args:
+            surface: поверхность для отрисовки.
+            cx: координата центра по горизонтали.
+            cy: координата центра по вертикали.
+            w: ширина монеты.
+            h: высота монеты.
+            color: основной цвет монеты.
+        """
         shadow = pygame.Rect(0, 0, w + 2, h + 2)
         shadow.center = (cx + 2, cy + 3)
         pygame.draw.ellipse(surface, (30, 30, 20), shadow)
@@ -670,6 +908,11 @@ class GameScene:
             pygame.draw.ellipse(surface, (255, 248, 160), hi)
 
     def _draw_balance(self, surface):
+        """Рисует панель счётчика монет с иконкой и числом.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         x, y = self._BALANCE_POS
         icon = self._BALANCE_ICON
         pad = self._BALANCE_PAD
@@ -705,6 +948,11 @@ class GameScene:
         surface.blit(text_surf, (text_x, y + (height - text_rect.height) // 2))
 
     def _draw_wave_button(self, surface):
+        """Рисует кнопку волны с индикатором прогресса и номером.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         rect = self._wave_button_rect()
         active = self.engine.wave_ready
         alpha = 255 if active else 110
@@ -736,6 +984,11 @@ class GameScene:
         surface.blit(text_surf, (tx, ty))
 
     def _draw_game_over(self, surface):
+        """Рисует анимированный экран поражения со статистикой.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         tick = self.game_over_tick
 
         overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
@@ -756,6 +1009,12 @@ class GameScene:
                 btn.draw(surface)
 
     def _draw_go_panel(self, surface, panel):
+        """Рисует рамку и разделитель панели экрана поражения.
+
+        Args:
+            surface: поверхность для отрисовки.
+            panel: прямоугольник панели поражения.
+        """
         pygame.draw.rect(surface, (18, 11, 7), panel, border_radius=16)
         pygame.draw.rect(
             surface, (52, 31, 18), panel.inflate(-10, -10), border_radius=14
@@ -771,6 +1030,13 @@ class GameScene:
         )
 
     def _draw_go_title(self, surface, panel, tick):
+        """Рисует заголовок «ПОРАЖЕНИЕ» с анимацией появления.
+
+        Args:
+            surface: поверхность для отрисовки.
+            panel: прямоугольник панели поражения.
+            tick: счётчик кадров экрана поражения.
+        """
         title_t = _ease_out(_clamp01((tick - 4) / 26))
         scale = 0.6 + 0.4 * title_t
         shake = int(7 * (1 - title_t) * math.sin(tick * 0.9))
@@ -786,6 +1052,12 @@ class GameScene:
             surface.blit(scaled, rect)
 
     def _draw_go_stats(self, surface, panel):
+        """Рисует строки статистики партии на экране поражения.
+
+        Args:
+            surface: поверхность для отрисовки.
+            panel: прямоугольник панели поражения.
+        """
         rows = [
             ("Дошёл до волны", self.engine.wave_index + 1),
             ("Врагов убито", self.engine.kills),
@@ -801,14 +1073,40 @@ class GameScene:
 
 
 def _clamp01(t):
+    """Ограничивает значение диапазоном [0, 1].
+
+    Args:
+        t: исходное число.
+
+    Returns:
+        Значение, обрезанное до диапазона от 0.0 до 1.0.
+    """
     return max(0.0, min(1.0, t))
 
 
 def _ease_out(t):
+    """Плавно замедляет анимацию к концу (кубическое сглаживание).
+
+    Args:
+        t: прогресс анимации в диапазоне [0, 1].
+
+    Returns:
+        Сглаженное значение прогресса.
+    """
     return 1 - (1 - t) ** 3
 
 
 def _stable_noise(x, y, salt):
+    """Возвращает детерминированный псевдослучайный хеш по координатам.
+
+    Args:
+        x: первая координата.
+        y: вторая координата.
+        salt: дополнительное число для разнообразия результата.
+
+    Returns:
+        32-битное беззнаковое псевдослучайное число.
+    """
     value = x * 734287 + y * 912931 + salt * 19349663
     value = (value ^ (value >> 13)) * 1274126177
     return (value ^ (value >> 16)) & 0xFFFFFFFF

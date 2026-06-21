@@ -45,7 +45,7 @@ def test_load_corrupted_json_returns_default(profile_path):
 
 
 def test_load_coerces_types(profile_path):
-    # coins дробное, уровни строками — должны привестись к int.
+    # coins дробное, уровни строками - должны привестись к int.
     profile_path.write_text(
         json.dumps({"coins": 99.0, "upgrades": {"auto_fire": "2"}}),
         encoding="utf-8",

@@ -1,3 +1,5 @@
+"""Загрузка и сохранение профиля игрока (монеты и улучшения)."""
+
 import json
 from pathlib import Path
 
@@ -5,10 +7,23 @@ from config import PROFILE_FILE
 
 
 def _default_profile():
+    """Возвращает пустой профиль по умолчанию.
+
+    Returns:
+        Словарь с нулём монет и пустым набором улучшений.
+    """
     return {"coins": 0, "upgrades": {}}
 
 
 def load_profile():
+    """Читает профиль из файла на диске.
+
+    Если файл отсутствует или повреждён, возвращается профиль по
+    умолчанию. Прочитанные значения приводятся к корректным типам.
+
+    Returns:
+        Словарь профиля с ключами "coins" (int) и "upgrades" (dict).
+    """
     path = Path(PROFILE_FILE)
     if not path.exists():
         return _default_profile()
@@ -29,6 +44,11 @@ def load_profile():
 
 
 def save_profile(profile):
+    """Сохраняет профиль в файл в формате JSON.
+
+    Args:
+        profile: словарь профиля с ключами "coins" и "upgrades".
+    """
     path = Path(PROFILE_FILE)
     path.parent.mkdir(exist_ok=True)
     data = {

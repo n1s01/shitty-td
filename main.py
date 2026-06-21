@@ -1,3 +1,5 @@
+"""Точка входа: цикл приложения, окно и переключение сцен."""
+
 import pygame
 
 from config import GAME_CONFIG, LOGICAL_RESOLUTION
@@ -9,7 +11,15 @@ from settings import load_settings
 
 
 class App:
+    """Главное приложение: окно, основной цикл и активная сцена.
+
+    Рисует игру в логическом разрешении на холст и масштабирует его под
+    окно, переводит координаты ввода и управляет переходами между
+    сценами.
+    """
+
     def __init__(self):
+        """Инициализирует pygame, окно, холст и стартовую сцену меню."""
         pygame.init()
         self.settings = load_settings()
         self.base_w, self.base_h = LOGICAL_RESOLUTION
@@ -22,6 +32,11 @@ class App:
         self.return_scene = None
 
     def _create_screen(self):
+        """Создаёт окно по настройкам и пересчитывает область вывода.
+
+        Returns:
+            Поверхность экрана pygame.
+        """
         if self.settings["is_fullscreen"]:
             desktop_w, desktop_h = pygame.display.get_desktop_sizes()[0]
             screen = pygame.display.set_mode((desktop_w, desktop_h), pygame.NOFRAME)
@@ -32,6 +47,7 @@ class App:
         return screen
 
     def _compute_viewport(self):
+        """Вычисляет масштаб и отступы для вывода холста по центру."""
         self.scale = min(self.screen_w / self.base_w, self.screen_h / self.base_h)
         self.view_w = int(self.base_w * self.scale)
         self.view_h = int(self.base_h * self.scale)
@@ -39,11 +55,28 @@ class App:
         self.offset_y = (self.screen_h - self.view_h) // 2
 
     def _screen_to_logical(self, pos):
+        """Переводит координаты окна в логические координаты холста.
+
+        Args:
+            pos: координаты на экране (x, y).
+
+        Returns:
+            Кортеж (x, y) в логическом разрешении игры.
+        """
         x = (pos[0] - self.offset_x) / self.scale
         y = (pos[1] - self.offset_y) / self.scale
         return (x, y)
 
     def _translate_event(self, event):
+        """Переводит координаты мыши в событии в логические.
+
+        Args:
+            event: исходное событие pygame.
+
+        Returns:
+            Событие с пересчитанной позицией мыши либо исходное, если
+            оно не связано с мышью.
+        """
         if event.type in (
             pygame.MOUSEBUTTONDOWN,
             pygame.MOUSEBUTTONUP,
@@ -54,6 +87,14 @@ class App:
         return event
 
     def _snapshot_game(self, scene):
+        """Делает снимок игровой сцены без оверлея паузы.
+
+        Args:
+            scene: текущая сцена.
+
+        Returns:
+            Поверхность со снимком игры или None, если сцена не игровая.
+        """
         if not isinstance(scene, GameScene):
             return None
         surface = pygame.Surface((self.base_w, self.base_h))
@@ -64,6 +105,7 @@ class App:
         return surface
 
     def _bank_run_coins(self):
+        """Переносит монеты текущей партии в постоянный профиль."""
         game = next(
             (s for s in (self.scene, self.return_scene) if isinstance(s, GameScene)),
             None,
@@ -76,12 +118,14 @@ class App:
         game.engine.balance = 0
 
     def _apply_settings(self):
+        """Перечитывает настройки и пересоздаёт окно и сцену."""
         self.settings = load_settings()
         self.screen = self._create_screen()
         self.scene = self.return_scene or MenuScene(self.base_w, self.base_h)
         self.return_scene = None
 
     def run(self):
+        """Запускает основной цикл: события, обновление и отрисовка."""
         while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -104,6 +148,7 @@ class App:
         pygame.quit()
 
     def _present(self):
+        """Масштабирует холст под область вывода и выводит на экран."""
         if (self.view_w, self.view_h) == (self.base_w, self.base_h):
             scaled = self.canvas
         elif self.view_w < self.base_w:
@@ -117,6 +162,12 @@ class App:
         pygame.display.flip()
 
     def _handle_scene_result(self, result):
+        """Выполняет переход между сценами по результату обработки.
+
+        Args:
+            result: строка-команда от сцены ("game", "menu", "settings"
+                и т.п.) или None, если переход не требуется.
+        """
         if result == "quit":
             self.running = False
         elif result == "game":

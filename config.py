@@ -1,3 +1,5 @@
+"""конфигурация и все магические числа"""
+
 BASE_RESOLUTION = (960, 540)
 
 GAME_ZOOM = 2
@@ -113,7 +115,7 @@ PROFILE_FILE = "data/profile.json"
 UPGRADES = {
     "auto_fire": {
         "title": "Автовыстрел",
-        "desc": "Зажми ЛКМ — башня стреляет сама",
+        "desc": "Зажми ЛКМ - башня стреляет сама",
         "cost": 300,
         "max_level": 1,
         "kind": "side",

@@ -1,3 +1,5 @@
+"""Игровой движок: обновление врагов, снарядов, монет и волн."""
+
 import math
 import random
 
@@ -11,7 +13,17 @@ from core.wave_generator import make_wave
 
 
 class GameEngine:
+    """Состояние и логика игры"""
+
     def __init__(self, width, height, stats=None):
+        """Создаёт партию: башню, карту, сетку и счётчики.
+
+        Args:
+            width: ширина игрового поля в пикселях.
+            height: высота игрового поля в пикселях.
+            stats: словарь характеристик башни из улучшений; если None,
+                берутся базовые статы без улучшений.
+        """
         if stats is None:
             stats = effective_stats({"coins": 0, "upgrades": {}})
         self.width = width
@@ -57,6 +69,7 @@ class GameEngine:
         self.is_game_over = False
 
     def update(self):
+        """Продвигает всё состояние партии на один кадр."""
         if self.is_game_over:
             return
         if self.tower_shoot_timer > 0:
@@ -71,6 +84,12 @@ class GameEngine:
         self._update_effects()
 
     def shoot_at(self, target_x, target_y):
+        """Выпускает снаряд башни в сторону точки, если не идёт перезарядка.
+
+        Args:
+            target_x: координата цели по горизонтали.
+            target_y: координата цели по вертикали.
+        """
         if self.fire_cooldown > 0:
             return
         dx = target_x - self.tower.x
@@ -93,6 +112,7 @@ class GameEngine:
 
     @property
     def reload_progress(self):
+        """Готовность перезарядки от 0.0 (только выстрелил) до 1"""
         max_cd = self.fire_cooldown_max
         if max_cd <= 0 or self.fire_cooldown <= 0:
             return 1.0
@@ -100,6 +120,7 @@ class GameEngine:
 
     @property
     def wave_progress(self):
+        """Доля заспавненных врагов текущей волны от 0.0 до 1"""
         if not self.wave_active:
             return 1.0
         wave = make_wave(self.wave_index)
@@ -107,14 +128,17 @@ class GameEngine:
 
     @property
     def wave_ready(self):
+        """True, если волна завершена и можно запускать следующую."""
         return not self.wave_active and not self.is_game_over
 
     def start_wave(self):
+        """Запускает новую волну, сбрасывая счётчики спавна."""
         self.wave_active = True
         self.spawned_this_wave = 0
         self.spawn_timer = 0
 
     def _handle_spawning(self):
+        """Спавнит врагов по таймеру и завершает волну."""
         if not self.wave_active:
             return
         wave = make_wave(self.wave_index)
@@ -129,6 +153,13 @@ class GameEngine:
             self.wave_index += 1
 
     def _spawn_enemy(self, wave):
+        """Создаёт врага у случайного края и прокладывает ему путь.
+
+        Каждый ranged_every-й враг волны делается стреляющим
+
+        Args:
+            wave: словарь параметров волны из make_wave.
+        """
         side = random.randint(0, 3)
         size = GAME_CONFIG["enemy_size"]
         if side == 0:
@@ -169,6 +200,7 @@ class GameEngine:
         self.enemies.append(enemy)
 
     def _mark_map_on_grid(self):
+        """Отмечает воду и сплошные препятствия как непроходимые клетки."""
         ts = self.tile_size
         for row in range(self.tile_rows):
             for col in range(self.tile_cols):
@@ -181,6 +213,14 @@ class GameEngine:
             self._mark_world_rect(x, y, width, height)
 
     def _mark_world_rect(self, x, y, width, height):
+        """Помечает все клетки сетки под прямоугольником как препятствия.
+
+        Args:
+            x: левая граница прямоугольника в пикселях.
+            y: верхняя граница прямоугольника в пикселях.
+            width: ширина прямоугольника.
+            height: высота прямоугольника.
+        """
         left, top = self.grid.world_to_grid(x, y)
         right, bottom = self.grid.world_to_grid(x + width, y + height)
         for row in range(top, bottom + 1):
@@ -188,6 +228,11 @@ class GameEngine:
                 self.grid.set_obstacle(col, row)
 
     def _assign_path(self, enemy):
+        """Прокладывает врагу путь до башни и записывает его.
+
+        Args:
+            enemy: враг, которому назначается путь.
+        """
         start = self.grid.world_to_grid(enemy.x, enemy.y)
         end = self.grid.world_to_grid(self.tower.x, self.tower.y)
         grid_path = find_path(self.grid, start, end)
@@ -197,6 +242,14 @@ class GameEngine:
             enemy.path_index = 0
 
     def remove_obstacle(self, obstacle):
+        """Удаляет препятствие и при необходимости пересчитывает пути.
+
+        Args:
+            obstacle: препятствие для удаления.
+
+        Returns:
+            True, если препятствие было удалено, иначе False.
+        """
         if obstacle not in self.obstacles:
             return False
         self.obstacles.remove(obstacle)
@@ -213,21 +266,40 @@ class GameEngine:
         return True
 
     def _update_enemies(self):
+        """Двигает каждого врага к башне и выполняет его действие."""
         for enemy in self.enemies[:]:
             enemy.move_towards(self.tower.x, self.tower.y)
             enemy.act(self)
 
     def damage_tower(self, amount):
+        """Наносит урон башне и фиксирует проигрыш при её разрушении.
+
+        Args:
+            amount: величина урона.
+        """
         self.tower.take_damage(amount)
         if self.tower.is_destroyed:
             self.is_game_over = True
 
     def tower_contact(self, enemy):
+        """Проверяет, касается ли враг зоны попаданий башни.
+
+        Args:
+            enemy: проверяемый враг.
+
+        Returns:
+            True, если враг соприкасается с башней, иначе False.
+        """
         return _circle_touches_rect(
             enemy.x, enemy.y, enemy.size / 2, self.tower.hitbox_rect
         )
 
     def fire_enemy_projectile(self, enemy):
+        """Создаёт снаряд врага, летящий в башню.
+
+        Args:
+            enemy: дальнобойный враг, совершающий выстрел.
+        """
         dx = self.tower.x - enemy.x
         dy = self.tower.y - enemy.y
         dist = math.hypot(dx, dy)
@@ -244,6 +316,7 @@ class GameEngine:
             )
 
     def _update_enemy_projectiles(self):
+        """Двигает снаряды врагов, бьёт башню и убирает лишние."""
         for proj in self.enemy_projectiles[:]:
             proj.update()
             if _point_in_rect(proj.x, proj.y, self.tower.hitbox_rect):
@@ -253,6 +326,7 @@ class GameEngine:
                 self.enemy_projectiles.remove(proj)
 
     def _update_projectiles(self):
+        """Двигает снаряды башни и обрабатывает их попадания."""
         proj_size = GAME_CONFIG["projectile_size"]
         for proj in self.projectiles[:]:
             proj.update()
@@ -268,6 +342,14 @@ class GameEngine:
                 self.projectiles.remove(proj)
 
     def _hits_obstacle(self, proj):
+        """Проверяет, попал ли снаряд в сплошное препятствие.
+
+        Args:
+            proj: снаряд башни.
+
+        Returns:
+            True, если снаряд внутри сплошного препятствия, иначе False.
+        """
         for obstacle in self.obstacles:
             if not obstacle.solid:
                 continue
@@ -279,12 +361,24 @@ class GameEngine:
         return False
 
     def _update_effects(self):
+        """Обновляет визуальные эффекты и убирает завершённые."""
         for effect in self.effects[:]:
             effect.update()
             if effect.is_done:
                 self.effects.remove(effect)
 
     def _check_projectile_hits(self, proj, proj_size):
+        """Проверяет попадание снаряда по врагам и применяет урон.
+
+        При смерти врага начисляет убийство и роняет монеты.
+
+        Args:
+            proj: снаряд башни.
+            proj_size: радиус снаряда для проверки столкновения.
+
+        Returns:
+            True, если снаряд попал во врага (и был удалён), иначе False.
+        """
         for enemy in self.enemies[:]:
             dist = math.hypot(proj.x - enemy.x, proj.y - enemy.y)
             if dist < (enemy.size + proj_size):
@@ -314,6 +408,7 @@ class GameEngine:
         return False
 
     def _update_coins(self):
+        """Обновляет монеты и зачисляет собранные в баланс."""
         alive = []
         for coin in self.coins:
             coin.update()
@@ -324,6 +419,14 @@ class GameEngine:
         self.coins = alive
 
     def collect_coin_at(self, x, y, target_x, target_y):
+        """Начинает сбор монет рядом с указанной точкой.
+
+        Args:
+            x: координата точки сбора по горизонтали.
+            y: координата точки сбора по вертикали.
+            target_x: координата, к которой летит монета (по горизонтали).
+            target_y: координата, к которой летит монета (по вертикали).
+        """
         from config import COIN_CONFIG
 
         radius = COIN_CONFIG["collect_hitbox"]
@@ -332,11 +435,24 @@ class GameEngine:
                 self._begin_collect(coin, target_x, target_y)
 
     def auto_collect_coins(self, target_x, target_y):
+        """Автоматически запускает сбор всех монет на поле.
+
+        Args:
+            target_x: координата цели сбора по горизонтали.
+            target_y: координата цели сбора по вертикали.
+        """
         for coin in self.coins:
             if not coin.collecting:
                 self._begin_collect(coin, target_x, target_y)
 
     def _begin_collect(self, coin, target_x, target_y):
+        """Запускает полёт монеты к цели по случайной дуге.
+
+        Args:
+            coin: монета, которую нужно собрать.
+            target_x: координата цели по горизонтали.
+            target_y: координата цели по вертикали.
+        """
         mx = (coin.x + target_x) / 2
         my = (coin.y + target_y) / 2
         dx = target_x - coin.x
@@ -349,10 +465,29 @@ class GameEngine:
         coin.start_collect(target_x, target_y, cx, cy)
 
     def _is_out_of_bounds(self, proj):
+        """Проверяет, вышел ли снаряд за пределы поля.
+
+        Args:
+            proj: проверяемый снаряд.
+
+        Returns:
+            True, если снаряд за границами поля, иначе False.
+        """
         return proj.x < 0 or proj.x > self.width or proj.y < 0 or proj.y > self.height
 
 
 def _circle_touches_rect(cx, cy, radius, rect):
+    """Проверяет пересечение окружности и прямоугольника.
+
+    Args:
+        cx: центр окружности по горизонтали.
+        cy: центр окружности по вертикали.
+        radius: радиус окружности.
+        rect: прямоугольник как (x, y, width, height).
+
+    Returns:
+        True, если окружность касается прямоугольника, иначе False.
+    """
     rx, ry, rw, rh = rect
     nearest_x = max(rx, min(cx, rx + rw))
     nearest_y = max(ry, min(cy, ry + rh))
@@ -360,5 +495,15 @@ def _circle_touches_rect(cx, cy, radius, rect):
 
 
 def _point_in_rect(x, y, rect):
+    """Проверяет, лежит ли точка внутри прямоугольника.
+
+    Args:
+        x: координата точки по горизонтали.
+        y: координата точки по вертикали.
+        rect: прямоугольник как (x, y, width, height).
+
+    Returns:
+        True, если точка внутри прямоугольника, иначе False.
+    """
     rx, ry, rw, rh = rect
     return rx <= x <= rx + rw and ry <= y <= ry + rh

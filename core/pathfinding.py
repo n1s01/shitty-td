@@ -1,8 +1,21 @@
+"""Поиск пути по сетке (A*) и сглаживание маршрута."""
+
 import heapq
 import math
 
 
 def find_path(grid, start, end):
+    """Ищет кратчайший путь между клетками алгоритмом A*.
+
+    Args:
+        grid: сетка игрового поля (объект Grid).
+        start: начальная клетка в виде (col, row).
+        end: целевая клетка в виде (col, row).
+
+    Returns:
+        Список клеток пути (без стартовой) или None, если путь не
+        найден либо цель непроходима.
+    """
     if not grid.is_walkable(end[0], end[1]):
         return None
 
@@ -38,6 +51,19 @@ def find_path(grid, start, end):
 
 
 def smooth_path(grid, path):
+    """Убирает лишние точки пути, спрямляя прямые участки.
+
+    Идёт по маршруту и заменяет цепочки клеток на самую дальнюю клетку,
+    до которой есть прямая видимость по проходимым клеткам.
+
+    Args:
+        grid: сетка игрового поля (объект Grid).
+        path: исходный список клеток (col, row).
+
+    Returns:
+        Сглаженный список клеток. Если в пути не больше двух точек,
+        возвращается он же без изменений.
+    """
     if len(path) <= 2:
         return path
 
@@ -56,6 +82,17 @@ def smooth_path(grid, path):
 
 
 def _line_walkable(grid, start, end):
+    """Проверяет прямую видимость между клетками (алгоритм Брезенхэма).
+
+    Args:
+        grid: сетка игрового поля (объект Grid).
+        start: начальная клетка (col, row).
+        end: конечная клетка (col, row).
+
+    Returns:
+        True, если все клетки на прямой между start и end проходимы,
+        иначе False.
+    """
     col_start, row_start = start
     col_end, row_end = end
     col_distance = abs(col_end - col_start)

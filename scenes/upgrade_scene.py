@@ -1,3 +1,5 @@
+"""Сцена прокачки: покупка улучшений за накопленные монеты."""
+
 import pygame
 
 from config import UPGRADES
@@ -12,7 +14,15 @@ TAVERN_W, TAVERN_H = 440, 160
 
 
 class UpgradeScene(_BaseMenuScene):
+    """Экран улучшений с карточками апгрейдов и кнопкой назад."""
+
     def __init__(self, width, height):
+        """Загружает профиль, готовит шрифты и раскладку карточек.
+
+        Args:
+            width: ширина экрана в пикселях.
+            height: высота экрана в пикселях.
+        """
         super().__init__(width, height)
         self.profile = load_profile()
         self.title_font = make_ui_font(46)
@@ -26,6 +36,11 @@ class UpgradeScene(_BaseMenuScene):
         self._texture_buttons([self.back_btn])
 
     def _layout(self):
+        """Рассчитывает прямоугольники карточек улучшений.
+
+        Returns:
+            Словарь {uid: pygame.Rect} с расположением карточек.
+        """
         side_ids = [u for u, s in UPGRADES.items() if s["kind"] == "side"]
         gap = 32
         total = len(side_ids) * CARD_W + (len(side_ids) - 1) * gap
@@ -41,6 +56,14 @@ class UpgradeScene(_BaseMenuScene):
         return cards
 
     def handle_event(self, event):
+        """Обрабатывает наведение, покупку улучшений и выход.
+
+        Args:
+            event: событие pygame.
+
+        Returns:
+            "menu" для возврата в главное меню или None.
+        """
         if event.type == pygame.MOUSEMOTION:
             self._mouse = event.pos
             self.back_btn.check_hover(event.pos)
@@ -57,9 +80,15 @@ class UpgradeScene(_BaseMenuScene):
         return None
 
     def update(self):
+        """Обновляет состояние сцены (на экране прокачки ничего не меняется)."""
         pass
 
     def draw(self, surface):
+        """Рисует фон, заголовок, баланс, связи и карточки улучшений.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         self._draw_background(surface)
         self._draw_title(surface)
         self._draw_balance(surface)
@@ -69,6 +98,11 @@ class UpgradeScene(_BaseMenuScene):
         self.back_btn.draw(surface)
 
     def _draw_title(self, surface):
+        """Рисует заголовок «Прокачка» с тенью.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         shadow, _ = self.title_font.render("Прокачка", (38, 22, 12))
         main, trect = self.title_font.render("Прокачка", (245, 222, 150))
         x = self.width // 2 - trect.width // 2
@@ -76,6 +110,11 @@ class UpgradeScene(_BaseMenuScene):
         surface.blit(main, (x, 60))
 
     def _draw_balance(self, surface):
+        """Рисует текущий баланс монет игрока.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         label = f"Баланс: {self.profile['coins']}"
         shadow, _ = self.card_font.render(label, (20, 12, 6))
         main, trect = self.card_font.render(label, (255, 215, 80))
@@ -84,6 +123,11 @@ class UpgradeScene(_BaseMenuScene):
         surface.blit(main, (x, 130))
 
     def _draw_links(self, surface):
+        """Рисует линии от побочных улучшений к главному (таверне).
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         tavern = self.cards["tavern"]
         top = (tavern.centerx, tavern.top)
         unlocked = upgrades.is_unlocked(self.profile, "tavern")
@@ -94,6 +138,13 @@ class UpgradeScene(_BaseMenuScene):
             pygame.draw.line(surface, color, (rect.centerx, rect.bottom), top, 3)
 
     def _draw_card(self, surface, uid, rect):
+        """Рисует карточку улучшения с учётом её состояния.
+
+        Args:
+            surface: поверхность для отрисовки.
+            uid: идентификатор улучшения.
+            rect: прямоугольник карточки.
+        """
         spec = UPGRADES[uid]
         maxed = upgrades.is_maxed(self.profile, uid)
         unlocked = upgrades.is_unlocked(self.profile, uid)
@@ -132,6 +183,17 @@ class UpgradeScene(_BaseMenuScene):
         self._draw_card_status(surface, uid, spec, rect, maxed, unlocked, affordable)
 
     def _draw_card_status(self, surface, uid, spec, rect, maxed, unlocked, affordable):
+        """Рисует строку статуса карточки (цена, «Куплено» и т.п.).
+
+        Args:
+            surface: поверхность для отрисовки.
+            uid: идентификатор улучшения.
+            spec: словарь параметров улучшения.
+            rect: прямоугольник карточки.
+            maxed: True, если улучшение прокачано до максимума.
+            unlocked: True, если улучшение разблокировано.
+            affordable: True, если у игрока хватает монет.
+        """
         if maxed:
             text, color = "Куплено", (150, 210, 120)
         elif not unlocked:
@@ -144,5 +206,15 @@ class UpgradeScene(_BaseMenuScene):
         )
 
     def _blit_text(self, surface, font, text, color, x, y):
+        """Отрисовывает строку текста в заданной точке.
+
+        Args:
+            surface: поверхность для отрисовки.
+            font: шрифт для рендеринга.
+            text: текст для вывода.
+            color: цвет текста.
+            x: координата по горизонтали.
+            y: координата по вертикали.
+        """
         text_surf, _ = font.render(text, color)
         surface.blit(text_surf, (x, y))

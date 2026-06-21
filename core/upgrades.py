@@ -1,15 +1,43 @@
+"""Логика улучшений профиля: разблокировка, покупка и итоговые статы."""
+
 from config import GAME_CONFIG, UPGRADES
 
 
 def level(profile, uid):
+    """Возвращает текущий уровень улучшения в профиле.
+
+    Args:
+        profile: словарь профиля игрока.
+        uid: идентификатор улучшения.
+
+    Returns:
+        Уровень улучшения (0, если оно ещё не куплено).
+    """
     return profile["upgrades"].get(uid, 0)
 
 
 def _side_ids():
+    """Возвращает идентификаторы всех побочных улучшений.
+
+    Returns:
+        Список uid улучшений с видом "side".
+    """
     return [uid for uid, spec in UPGRADES.items() if spec["kind"] == "side"]
 
 
 def is_unlocked(profile, uid):
+    """Проверяет, доступно ли улучшение для покупки.
+
+    Главное улучшение ("main") открывается только после прокачки всех
+    побочных улучшений до максимума.
+
+    Args:
+        profile: словарь профиля игрока.
+        uid: идентификатор улучшения.
+
+    Returns:
+        True, если улучшение разблокировано, иначе False.
+    """
     spec = UPGRADES[uid]
     if spec["kind"] != "main":
         return True
@@ -17,10 +45,29 @@ def is_unlocked(profile, uid):
 
 
 def is_maxed(profile, uid):
+    """Проверяет, прокачано ли улучшение до максимума.
+
+    Args:
+        profile: словарь профиля игрока.
+        uid: идентификатор улучшения.
+
+    Returns:
+        True, если достигнут максимальный уровень, иначе False.
+    """
     return level(profile, uid) >= UPGRADES[uid]["max_level"]
 
 
 def can_buy(profile, uid):
+    """Проверяет, можно ли купить следующий уровень улучшения.
+
+    Args:
+        profile: словарь профиля игрока.
+        uid: идентификатор улучшения.
+
+    Returns:
+        True, если улучшение разблокировано, не на максимуме и хватает
+        монет, иначе False.
+    """
     return (
         is_unlocked(profile, uid)
         and not is_maxed(profile, uid)
@@ -29,6 +76,15 @@ def can_buy(profile, uid):
 
 
 def buy(profile, uid):
+    """Покупает следующий уровень улучшения, списывая монеты.
+
+    Args:
+        profile: словарь профиля игрока (изменяется на месте).
+        uid: идентификатор улучшения.
+
+    Returns:
+        True, если покупка состоялась, иначе False.
+    """
     if not can_buy(profile, uid):
         return False
     profile["coins"] -= UPGRADES[uid]["cost"]
@@ -37,6 +93,15 @@ def buy(profile, uid):
 
 
 def effective_stats(profile):
+    """Считает итоговые характеристики башни с учётом улучшений.
+
+    Args:
+        profile: словарь профиля игрока.
+
+    Returns:
+        Словарь с характеристиками башни и флагами автоматизации
+        (HP, перезарядка, урон, авто-огонь, авто-волны и т.д.).
+    """
     effects = UPGRADES["tavern"].get("effects", {})
     tavern = level(profile, "tavern")
 

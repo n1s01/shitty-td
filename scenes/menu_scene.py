@@ -1,3 +1,5 @@
+"""Сцены главного меню и настроек."""
+
 import pygame
 
 from config import AVAILABLE_RESOLUTIONS, COLORS
@@ -8,23 +10,46 @@ from view.widgets import Button
 
 
 class _BaseMenuScene:
+    """Базовая сцена меню: фон, текстуры кнопок и общие размеры."""
+
     def __init__(self, width, height):
+        """Сохраняет размеры экрана и готовит хранилище ассетов.
+
+        Args:
+            width: ширина экрана в пикселях.
+            height: высота экрана в пикселях.
+        """
         self.width = width
         self.height = height
         self.assets = AssetStore()
         self._background = None
 
     def _texture_buttons(self, buttons):
+        """Назначает кнопкам общую деревянную текстуру.
+
+        Args:
+            buttons: список кнопок для оформления.
+        """
         texture = self.assets.optional_image("tiles/tavern_planks.png")
         for button in buttons:
             button.texture = texture
 
     def _draw_background(self, surface):
+        """Рисует фон сцены, строя его при первом вызове.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         if self._background is None:
             self._background = self._build_background()
         surface.blit(self._background, (0, 0))
 
     def _build_background(self):
+        """Создаёт фон: картинку меню или замощённую траву.
+
+        Returns:
+            Поверхность с готовым фоном.
+        """
         canvas = pygame.Surface((self.width, self.height))
         image = self.assets.optional_image("ui/menu_background.png")
         if image is not None:
@@ -34,6 +59,12 @@ class _BaseMenuScene:
         return canvas
 
     def _blit_cover(self, canvas, image):
+        """Рисует изображение по центру с заполнением всего холста.
+
+        Args:
+            canvas: поверхность-приёмник.
+            image: исходное изображение фона.
+        """
         img_w, img_h = image.get_size()
         scale = max(self.width / img_w, self.height / img_h)
         new_size = (round(img_w * scale), round(img_h * scale))
@@ -43,6 +74,11 @@ class _BaseMenuScene:
         canvas.blit(scaled, (x, y))
 
     def _blit_grass(self, canvas):
+        """Замощает холст травой или заливает фоновым цветом.
+
+        Args:
+            canvas: поверхность-приёмник.
+        """
         grass = self.assets.optional_image("tiles/grass.png")
         if grass is None:
             canvas.fill(COLORS["bg"])
@@ -53,7 +89,15 @@ class _BaseMenuScene:
 
 
 class MenuScene(_BaseMenuScene):
+    """Главное меню с кнопками перехода по разделам игры."""
+
     def __init__(self, width, height):
+        """Готовит шрифты, расположение и кнопки меню.
+
+        Args:
+            width: ширина экрана в пикселях.
+            height: высота экрана в пикселях.
+        """
         super().__init__(width, height)
         self.font = make_ui_font(24)
         self.title_font = make_ui_font(48)
@@ -62,6 +106,7 @@ class MenuScene(_BaseMenuScene):
         self._create_buttons()
 
     def _create_buttons(self):
+        """Создаёт кнопки главного меню и оформляет их текстурой."""
         bw, bh = 260, 52
         x = self.margin_x
         y = self.height // 2 - 20
@@ -75,6 +120,15 @@ class MenuScene(_BaseMenuScene):
         self._texture_buttons(self.buttons)
 
     def handle_event(self, event):
+        """Обрабатывает наведение и клики по кнопкам меню.
+
+        Args:
+            event: событие pygame.
+
+        Returns:
+            Имя выбранного действия ("game", "upgrades", "settings",
+            "quit") или None, если ничего не выбрано.
+        """
         if event.type == pygame.MOUSEMOTION:
             for btn in self.buttons:
                 btn.check_hover(event.pos)
@@ -90,15 +144,26 @@ class MenuScene(_BaseMenuScene):
         return None
 
     def update(self):
+        """Обновляет состояние сцены (в меню ничего не меняется)."""
         pass
 
     def draw(self, surface):
+        """Рисует фон, заголовок и кнопки меню.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         self._draw_background(surface)
         self._draw_title(surface)
         for btn in self.buttons:
             btn.draw(surface)
 
     def _draw_title(self, surface):
+        """Рисует заголовок игры с тенью.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         title = "Tavern Defense"
         x, y = self.margin_x, self.title_y
         shadow, _ = self.title_font.render(title, (38, 22, 12))
@@ -108,13 +173,23 @@ class MenuScene(_BaseMenuScene):
 
 
 class SettingsScene(_BaseMenuScene):
+    """Сцена настроек: полноэкранный режим и разрешение экрана."""
+
     def __init__(self, width, height, background=None):
+        """Готовит панель настроек и загружает текущие параметры.
+
+        Args:
+            width: ширина экрана в пикселях.
+            height: высота экрана в пикселях.
+            background: снимок игры под полупрозрачной панелью или None,
+                если настройки открыты из главного меню.
+        """
         super().__init__(width, height)
         self.snapshot = background
         self.font = make_ui_font(20)
         self.title_font = make_ui_font(34)
         self.panel_w = 300
-        # Поверх игры — по центру, из главного меню — слева (не перекрывая башню)
+        # Поверх игры - по центру, из главного меню - слева (не перекрывая башню)
         if background is not None:
             self.margin_x = (width - self.panel_w) // 2
         else:
@@ -125,6 +200,11 @@ class SettingsScene(_BaseMenuScene):
         self._create_buttons()
 
     def _build_background(self):
+        """Создаёт фон настроек: затемнённый снимок игры или обычный фон.
+
+        Returns:
+            Поверхность с готовым фоном.
+        """
         if self.snapshot is None:
             return super()._build_background()
         canvas = self.snapshot.copy()
@@ -134,12 +214,18 @@ class SettingsScene(_BaseMenuScene):
         return canvas
 
     def _get_res_index(self):
+        """Возвращает индекс текущего разрешения в списке доступных.
+
+        Returns:
+            Индекс разрешения, либо 1, если текущее не из списка.
+        """
         res = tuple(self.settings["resolution"])
         if res in AVAILABLE_RESOLUTIONS:
             return AVAILABLE_RESOLUTIONS.index(res)
         return 1
 
     def _create_buttons(self):
+        """Создаёт кнопки панели настроек и оформляет их текстурой."""
         x = self.margin_x
         bw = self.panel_w
         bh = 48
@@ -169,6 +255,11 @@ class SettingsScene(_BaseMenuScene):
         )
 
     def _fullscreen_text(self):
+        """Возвращает подпись кнопки переключения полного экрана.
+
+        Returns:
+            Строка "Полный экран: Да" или "Полный экран: Нет".
+        """
         return (
             "Полный экран: Да"
             if self.settings["is_fullscreen"]
@@ -176,13 +267,32 @@ class SettingsScene(_BaseMenuScene):
         )
 
     def _res_text(self):
+        """Возвращает текущее разрешение в виде строки "ШxВ".
+
+        Returns:
+            Строка разрешения, например "1280x720".
+        """
         w, h = AVAILABLE_RESOLUTIONS[self.res_index]
         return f"{w}x{h}"
 
     def _res_enabled(self):
+        """Сообщает, доступен ли выбор разрешения.
+
+        Returns:
+            True, если не включён полноэкранный режим, иначе False.
+        """
         return not self.settings["is_fullscreen"]
 
     def handle_event(self, event):
+        """Обрабатывает события панели настроек.
+
+        Args:
+            event: событие pygame.
+
+        Returns:
+            "apply_settings" при применении, "close_settings" при выходе
+            или None, если переход не нужен.
+        """
         if event.type == pygame.MOUSEMOTION:
             hover_btns = [self.fullscreen_btn, self.back_btn, self.apply_btn]
             if self._res_enabled():
@@ -209,9 +319,15 @@ class SettingsScene(_BaseMenuScene):
         return None
 
     def update(self):
+        """Обновляет состояние сцены (в настройках ничего не меняется)."""
         pass
 
     def draw(self, surface):
+        """Рисует фон, заголовок и элементы управления настроек.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         self._draw_background(surface)
         self._draw_title(surface)
         self.fullscreen_btn.draw(surface)
@@ -228,6 +344,11 @@ class SettingsScene(_BaseMenuScene):
         self.apply_btn.draw(surface)
 
     def _draw_title(self, surface):
+        """Рисует заголовок «Настройки» с тенью по центру панели.
+
+        Args:
+            surface: поверхность для отрисовки.
+        """
         title = "Настройки"
         shadow, _ = self.title_font.render(title, (38, 22, 12))
         main, trect = self.title_font.render(title, (245, 222, 150))
